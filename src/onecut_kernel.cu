@@ -361,7 +361,6 @@ __global__ void kernel_bin_relabel(float* res, float* pixel_flow,
                   ? atomicCAS(target_height, read_height, new_height)
                   : read_height;
         } while (read_height != returned_height);
-        bin_height[bin_num] = new_height;
       }
     }
   }

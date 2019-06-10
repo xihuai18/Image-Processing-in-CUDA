@@ -182,7 +182,7 @@ __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
   }
   if(img_x < img_width && img_y < img_height) {
     float tmp_res = res_pixel[img_idx * RES_UNIT_SIZE + 8];
-    if(tmp_res > 0) {
+    if(tmp_res > EPS) {
       pixel_flow[img_idx] = tmp_res;
       res_pixel[img_idx * RES_UNIT_SIZE + 8] = 0;
     }
@@ -251,29 +251,6 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   dim3 block1(32, 32);
   dim3 grid1(updiv(img_width, 32), updiv(img_height, 32));
   init<<<grid1, block1>>>(d_edges, d_pixel_flow, d_bin_height, img_size, img_height, img_width, color_bin_num);
-  cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_pixel_flow, d_pixel_flow, img_size * sizeof(float),
-             cudaMemcpyDeviceToHost);
-  cudaMemcpy(h_bin_flow, d_bin_flow, (color_bin_num + 1) * sizeof(float),
-             cudaMemcpyDeviceToHost);
-  // printf("init\n");
-  // for (int i=0; i<img_size; ++i) {
-  //     for (int j=0; j<6+2+2; ++j) {
-  //         printf("%0.2lf ", h_edges[i*(6+2+2)+j]);
-  //     }
-  //     printf("\n");
-  // }
-  // for (int i = 0; i < img_size; ++i) {
-  //     printf("%0.2lf ", h_pixel_flow[i]);
-  // }
-  // printf("\n");
-  // for (int i = 0; i < color_bin_num+1; ++i) {
-  //     printf("%0.2lf ", h_bin_flow[i]);
-  // }
-  // printf("\n");
-
-  // printf("\n");
-
   // maxflow
   dim3 block_bin(1024);
   dim3 grid_bin(updiv(color_bin_num + 1, 1024));
@@ -299,40 +276,7 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
         color_bin_num);
     kernel_pixel_pull<<<grid1, block1>>>(d_edges, d_pull_pixel, d_pixel_flow,
                                          img_size, img_width, img_height);
-    cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_pixel_flow, d_pixel_flow, img_size * sizeof(float),
-               cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_bin_flow, d_bin_flow, (color_bin_num + 1) * sizeof(float),
-               cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
-               cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_bin_height, d_bin_height, (color_bin_num + 1) * sizeof(int),
-               cudaMemcpyDeviceToHost);
     CHECK(cudaDeviceSynchronize());
-    // for (int i=0; i<img_size; ++i) {
-    //     printf("%d ", h_pixel_height[i]);
-    // }
-    // puts("");
-    // for (int i=0; i<=color_bin_num; ++i) {
-    //     printf("%d ", h_bin_height[i]);
-    // }
-    // puts("");
-    // for (int i=0; i<img_size; ++i) {
-    //     for (int j=0; j<6+2+2; ++j) {
-    //         printf("%0.2lf ", h_edges[i*(6+2+2)+j]);
-    //     }
-    //     printf("\n");
-    // }
-    // for (int i = 0; i < img_size; ++i) {
-    //     printf("%0.2lf ", h_pixel_flow[i]);
-    // }
-    // printf("\n");
-    // for (int i = 0; i < color_bin_num+1; ++i) {
-    //     printf("%0.2lf ", h_bin_flow[i]);
-    // }
-    // printf("\n");
-
-    // printf("\n");
     cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
   } while (!h_finished);
 
@@ -353,12 +297,6 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
         color_bin_num, cur_height, d_finished);
     cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
     cur_height++;
-    cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
-               cudaMemcpyDeviceToHost);
-    // for (int i = 0; i < img_size; i++) {
-    //     printf("%d ", h_pixel_height[i]);
-    // }
-    // puts("");
   } while (!h_finished);
 
   // segment
@@ -366,16 +304,11 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
                                     img_height);
   cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
              cudaMemcpyDeviceToHost);
-  // for (int i = 0; i < img_size; i++) {
-  //     printf("%d ", h_pixel_height[i]);
-  // }
-  // puts("end");
 
   free(h_edges);
   free(h_bin_flow);
   free(h_bin_height);
   free(h_pixel_flow);
-  // free(h_pixel_height);
 
   cudaFree(d_bin_flow);
   cudaFree(d_pixel_flow);
@@ -406,16 +339,6 @@ int main(int argc, char **argv) {
     fscanf(fp, "%d", &mask_img[i]);
   }
   fclose(fp);
-
-//   src_img[0] = 70;
-//   src_img[1] = 55;
-//   src_img[2] = 0;
-//   src_img[3] = 135;
-//   src_img[4] = 155;
-//   src_img[5] = 195;
-
-//   mask_img[0] = mask_img[1] = 255 << 16;
-//   mask_img[5] = 255 << 8;
 
   int *segment = getCutMask(src_img, mask_img, img_height, img_width);
   for (int i = 0; i < img_height; ++i) {
