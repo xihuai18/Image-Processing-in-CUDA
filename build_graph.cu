@@ -136,8 +136,8 @@ __global__ void computeEdges(
     int block_id = blockIdx.y*gridDim.x+blockIdx.x;
     int thread_id = block_id*blockDim.x+threadIdx.x;
 
-    // int color_bin_size = pow(256/color_bin_size, 3);
-    // int color_bin_size = 256/color_bin_size;
+    // int color_bin_num = pow(256/color_bin_size, 3);
+    // int color_bin_num = 256/color_bin_size;
     int img_size = img_height*img_width;
     int edges_width = 6+2+2;
 
@@ -371,7 +371,7 @@ int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
     free(h_bin_flow);
     free(h_bin_height);
     free(h_pixel_flow);
-    free(h_pixel_height);
+    // free(h_pixel_height);
 
     cudaFree(d_bin_flow);
     cudaFree(d_pixel_flow);
@@ -382,7 +382,8 @@ int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
     cudaFree(d_src_img);
     cudaFree(d_mask_img);
 
-    return NULL;
+    // return NULL;
+    return h_pixel_height;
 }
 
 int main() {
