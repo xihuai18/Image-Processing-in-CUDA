@@ -176,7 +176,7 @@ __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
                      int img_size, int img_height, int img_width, int bin_size) {
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
-  int img_idx = __umul24(img_y, col) + img_x;
+  int img_idx = __umul24(img_y, img_width) + img_x;
   if(img_idx == 0) {
     bin_height[bin_size] = img_size + bin_size + 2;
   }
