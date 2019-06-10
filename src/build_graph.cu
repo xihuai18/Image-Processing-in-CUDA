@@ -215,6 +215,7 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   }
   computeEdges<<<grid0, block0>>>(lambda, beta, d_edges, img_width, img_height,
                                 color_bin_size, d_src_img, d_mask_img);
+  CHECK(cudaDeviceSynchronize());
 
   // initialize data for maxflow
   float *d_bin_flow, *d_pixel_flow, *d_pull_pixel;
@@ -344,8 +345,8 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
         color_bin_num, cur_height, d_finished);
     cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
     cur_height++;
-    // cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
-    //            cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
+               cudaMemcpyDeviceToHost);
     // for (int i = 0; i < img_size; i++) {
     //     printf("%d ", h_pixel_height[i]);
     // }
@@ -381,15 +382,20 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
 }
 
 int main(int argc, char **argv) {
-  int img_height = 59, img_width = 79;
+  int img_height, img_width;
+//   int img_height = 2, img_width = 3;
+
   int *src_img = (int *)malloc(sizeof(int) * img_height * img_width);
   int *mask_img = (int *)malloc(sizeof(int) * img_height * img_width);
 
   FILE *fp;
   fp = fopen(argv[1], "r");
+  fscanf(fp, "%d%d", &img_height, &img_width);
   for (int i = 0; i < img_height * img_width; ++i) {
     fscanf(fp, "%d", &src_img[i]);
-    mask_img[i] = src_img[i];
+  }
+  for (int i = 0; i < img_height * img_width; ++i) {
+    fscanf(fp, "%d", &mask_img[i]);
   }
   fclose(fp);
 
@@ -403,6 +409,13 @@ int main(int argc, char **argv) {
 //   mask_img[0] = mask_img[1] = 255 << 16;
 //   mask_img[5] = 255 << 8;
 
-  getCutMask(src_img, mask_img, img_height, img_width);
+  int *segment = getCutMask(src_img, mask_img, img_height, img_width);
+  for (int i = 0; i < img_height; ++i) {
+    for (int j = 0; j < img_width; ++j) {
+      printf("%d ", segment[i * img_width + j]);
+    }
+    printf("\n");
+  }
+  free(segment);
   return 0;
 }

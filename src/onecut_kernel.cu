@@ -256,9 +256,10 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
 
   // load pixel_height, bin_height to shared memory
   extern __shared__ int height[];
-  if (x < row && y < col) {
-    height[tile_pid] = pixel_height[pid];
-  }
+//   if (x < row && y < col) {
+//     height[tile_pid] = pixel_height[pid];
+//   }
+  height[tile_pid] = (x < row && y < col) ? pixel_height[pid] : INF;
   if (threadIdx.y == 0) {
     height[tile_pid - tile_col] =
         (x > 0 && y < col) ? pixel_height[pid - col] : INF;
@@ -427,23 +428,24 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
 
   // load bfs_pixel_height, bfs_bin_height to shared memory
   extern __shared__ int height[];
-  if (x < row && y < col) {
-    height[tile_pid] = bfs_pixel_height[pid];
-  }
+//   if (x < row && y < col) {
+//     height[tile_pid] = bfs_pixel_height[pid];
+//   }
+  height[tile_pid] = (x < row && y < col) ? bfs_pixel_height[pid] : -INF;
   if (threadIdx.y == 0) {
     height[tile_pid - tile_col] =
-        (x > 0 && y < col) ? bfs_pixel_height[pid - col] : INF;
+        (x > 0 && y < col) ? bfs_pixel_height[pid - col] : -INF;
   }
   if (threadIdx.y == blockDim.y - 1) {
     height[tile_pid + tile_col] =
-        (x + 1 < row && y < col) ? bfs_pixel_height[pid + col] : INF;
+        (x + 1 < row && y < col) ? bfs_pixel_height[pid + col] : -INF;
   }
   if (threadIdx.x == 0) {
-    height[tile_pid - 1] = (y > 0 && x < row) ? bfs_pixel_height[pid - 1] : INF;
+    height[tile_pid - 1] = (y > 0 && x < row) ? bfs_pixel_height[pid - 1] : -INF;
   }
   if (threadIdx.x == blockDim.x - 1) {
     height[tile_pid + 1] =
-        (y + 1 < col && x < row) ? bfs_pixel_height[pid + 1] : INF;
+        (y + 1 < col && x < row) ? bfs_pixel_height[pid + 1] : -INF;
   }
   if (block_pid <= bin_num) {
     height[tile_size + block_pid] = bfs_bin_height[block_pid];
@@ -472,7 +474,7 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
       modified = true;
     }
     int bid = int(res_pixel[6] + 0.5);
-    if (res_pixel[7] > EPS && height[img_size + bid] > cur_height) {  // bin
+    if (res_pixel[7] > EPS && height[tile_size + bid] > cur_height) {  // bin
       bfs_bin_height[bid] = cur_height + 1;
       modified = true;
     }
