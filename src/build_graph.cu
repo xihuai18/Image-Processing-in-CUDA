@@ -173,15 +173,22 @@ __global__ void computeEdges(float lambda, float beta, float *edges,
 }
 
 __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
-                     int img_size, int bin_size) {
-  res_pixel[0 * RES_UNIT_SIZE + 8] = 0;
-  res_pixel[1 * RES_UNIT_SIZE + 8] = 0;
-  res_pixel[0 * RES_UNIT_SIZE + 0] = 1000;
-  res_pixel[1 * RES_UNIT_SIZE + 0] = 1000;
-  pixel_flow[0] = 1000;
-  pixel_flow[1] = 1000;
-  bin_height[bin_size] = img_size + bin_size + 2;
+                     int img_size, int img_height, int img_width, int bin_size) {
+  int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
+      img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
+  int img_idx = __umul24(img_y, col) + img_x;
+  if(img_idx == 0) {
+    bin_height[bin_size] = img_size + bin_size + 2;
+  }
+  if(img_x < img_width && img_y < img_height) {
+    float tmp_res = res_pixel[img_idx * RES_UNIT_SIZE + 8];
+    if(tmp_res > 0) {
+      pixel_flow[img_idx] = tmp_res;
+      res_pixel[img_idx * RES_UNIT_SIZE + 8] = 0;
+    }
+  }
 }
+
 
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   float lambda = 1.0;
@@ -240,7 +247,10 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   cudaMemset(d_pixel_height, 0, img_size * sizeof(int));
   cudaMemset(d_bin_height, 0, (color_bin_num + 1) * sizeof(int));
 
-  init<<<1, 1>>>(d_edges, d_pixel_flow, d_bin_height, img_size, color_bin_num);
+
+  dim3 block1(32, 32);
+  dim3 grid1(updiv(img_width, 32), updiv(img_height, 32));
+  init<<<grid1, block1>>>(d_edges, d_pixel_flow, d_bin_height, img_size, img_height, img_width, color_bin_num);
   cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
   cudaMemcpy(h_pixel_flow, d_pixel_flow, img_size * sizeof(float),
              cudaMemcpyDeviceToHost);
@@ -265,8 +275,6 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   // printf("\n");
 
   // maxflow
-  dim3 block1(32, 32);
-  dim3 grid1(updiv(img_width, 32), updiv(img_height, 32));
   dim3 block_bin(1024);
   dim3 grid_bin(updiv(color_bin_num + 1, 1024));
   do {
