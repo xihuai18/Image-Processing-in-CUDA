@@ -353,19 +353,19 @@ int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
         cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
         cur_height++;
         cudaMemcpy(h_pixel_height, d_pixel_height, img_size*sizeof(int), cudaMemcpyDeviceToHost);
-        for (int i = 0; i < img_size; i++) {
-            printf("%d ", h_pixel_height[i]);
-        }
-        puts("");
+        // for (int i = 0; i < img_size; i++) {
+        //     printf("%d ", h_pixel_height[i]);
+        // }
+        // puts("");
     } while (!h_finished);
 
     kernel_segment<<<grid3, block3>>>(d_pixel_height, img_size, img_width, img_height);
 
     cudaMemcpy(h_pixel_height, d_pixel_height, img_size*sizeof(int), cudaMemcpyDeviceToHost);
-    for (int i = 0; i < img_size; i++) {
-        printf("%d ", h_pixel_height[i]);
-    }
-    puts("end");
+    // for (int i = 0; i < img_size; i++) {
+    //     printf("%d ", h_pixel_height[i]);
+    // }
+    // puts("end");
 
     free(h_edges);
     free(h_bin_flow);
