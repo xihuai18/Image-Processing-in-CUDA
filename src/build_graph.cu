@@ -185,6 +185,7 @@ __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
     if(tmp_res > EPS) {
       pixel_flow[img_idx] = tmp_res;
       res_pixel[img_idx * RES_UNIT_SIZE + 8] = 0;
+      res_pixel[img_idx * RES_UNIT_SIZE + 0] += tmp_res;
     }
   }
 }

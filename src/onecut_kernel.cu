@@ -190,7 +190,7 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
         flow_pull = 0;
         break;
       }
-    } while (!fequal(new_bin_flow, atomicCAS(&bin_flow[bin_idx], bin_res_flow,
+    } while (!fequal(bin_res_flow, atomicCAS(&bin_flow[bin_idx], bin_res_flow,
                                              new_bin_flow)));
     pixel_flow[img_idx] += flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 9] -= flow_pull;
@@ -210,7 +210,7 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
         flow_pull = 0;
         break;
       }
-    } while (!fequal(new_bin_flow, atomicCAS(&bin_flow[bin_num], bin_res_flow,
+    } while (!fequal(bin_res_flow, atomicCAS(&bin_flow[bin_num], bin_res_flow,
                                              new_bin_flow)));
     pixel_flow[img_idx] += flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 8] -= flow_pull;
@@ -256,9 +256,6 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
 
   // load pixel_height, bin_height to shared memory
   extern __shared__ int height[];
-//   if (x < row && y < col) {
-//     height[tile_pid] = pixel_height[pid];
-//   }
   height[tile_pid] = (x < row && y < col) ? pixel_height[pid] : INF;
   if (threadIdx.y == 0) {
     height[tile_pid - tile_col] =
@@ -275,9 +272,9 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
     height[tile_pid + 1] =
         (y + 1 < col && x < row) ? pixel_height[pid + 1] : INF;
   }
-  if (block_pid <= bin_num) {
-    height[tile_size + block_pid] = bin_height[block_pid];
-  }
+  // if (block_pid <= bin_num) {
+  //   height[tile_size + block_pid] = bin_height[block_pid];
+  // }
   __syncthreads();
 
   // relabel
@@ -286,7 +283,8 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
     float* res_pixel = res + pid * RES_UNIT_SIZE;
     // pixel -> S
     if (res_pixel[0] > EPS) {
-      min_height = min(min_height, height[tile_size + bin_num]);
+      // min_height = min(min_height, height[tile_size + bin_num]);
+      min_height = min(min_height, bin_height[bin_num]);
     }
     // pixel -> T
     if (res_pixel[1] > EPS) {
@@ -307,7 +305,8 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
     }
     // pixel -> bin
     if (res_pixel[7] > EPS) {
-      min_height = min(min_height, height[tile_size + int(res_pixel[6] + 0.5)]);
+      // min_height = min(min_height, height[tile_size + int(res_pixel[6] + 0.5)]);
+      min_height = min(min_height, bin_height[int(res_pixel[6] + 0.5)]);
     }
     if (min_height < INF) {
       pixel_height[pid] = min_height + 1;
@@ -351,18 +350,18 @@ __global__ void kernel_bin_relabel(float* res, float* pixel_flow,
       }
     }
     // S
-    if (bin_flow[bin_num] > EPS) {
-      target_height = bin_height + bin_num;
-      if (res[pid * RES_UNIT_SIZE + 8] > EPS) {
-        do {
-          read_height = *target_height;
-          returned_height =
-              (read_height > new_height)
-                  ? atomicCAS(target_height, read_height, new_height)
-                  : read_height;
-        } while (read_height != returned_height);
-      }
-    }
+    // if (bin_flow[bin_num] > EPS) {
+    //   target_height = bin_height + bin_num;
+    //   if (res[pid * RES_UNIT_SIZE + 8] > EPS) {
+    //     do {
+    //       read_height = *target_height;
+    //       returned_height =
+    //           (read_height > new_height)
+    //               ? atomicCAS(target_height, read_height, new_height)
+    //               : read_height;
+    //     } while (read_height != returned_height);
+    //   }
+    // }
   }
 }
 
@@ -374,7 +373,7 @@ __global__ void kernel_bin_relabel_rectify(int* bin_height, int bin_num,
   */
 
   int bid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (bid <= bin_num && bin_height[bid] < 0) {
+  if (bid < bin_num && bin_height[bid] < 0) {
     bin_height[bid] += INF;
     *finished = false;
   }
@@ -427,9 +426,6 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
 
   // load bfs_pixel_height, bfs_bin_height to shared memory
   extern __shared__ int height[];
-//   if (x < row && y < col) {
-//     height[tile_pid] = bfs_pixel_height[pid];
-//   }
   height[tile_pid] = (x < row && y < col) ? bfs_pixel_height[pid] : -INF;
   if (threadIdx.y == 0) {
     height[tile_pid - tile_col] =
@@ -446,9 +442,9 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
     height[tile_pid + 1] =
         (y + 1 < col && x < row) ? bfs_pixel_height[pid + 1] : -INF;
   }
-  if (block_pid <= bin_num) {
-    height[tile_size + block_pid] = bfs_bin_height[block_pid];
-  }
+  // if (block_pid <= bin_num) {
+  //   height[tile_size + block_pid] = bfs_bin_height[block_pid];
+  // }
   __syncthreads();
 
   // expand
@@ -473,7 +469,8 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
       modified = true;
     }
     int bid = int(res_pixel[6] + 0.5);
-    if (res_pixel[7] > EPS && height[tile_size + bid] > cur_height) {  // bin
+    // if (res_pixel[7] > EPS && height[tile_size + bid] > cur_height) {  // bin
+    if (res_pixel[7] > EPS && bfs_bin_height[bid] > cur_height) {  // bin
       bfs_bin_height[bid] = cur_height + 1;
       modified = true;
     }
@@ -505,14 +502,15 @@ __global__ void kernel_bin_bfs(float* res, int* bfs_pixel_height,
 
   // load bfs_bin_height to shared memory
   extern __shared__ int height[];
-  if (block_pid < bin_num) {
-    height[block_pid] = bfs_bin_height[block_pid];
-  }
+  // if (block_pid < bin_num) {
+  //   height[block_pid] = bfs_bin_height[block_pid];
+  // }
   __syncthreads();
 
   if (x < row && y < col && bfs_pixel_height[pid] > cur_height) {
     int bid = int(res[pid * RES_UNIT_SIZE + 6] + 0.5);
-    if (height[bid] == cur_height && res[pid * RES_UNIT_SIZE + 9] > EPS) {
+    // if (height[bid] == cur_height && res[pid * RES_UNIT_SIZE + 9] > EPS) {
+    if (bfs_bin_height[bid] == cur_height && res[pid * RES_UNIT_SIZE + 9] > EPS) {
       bfs_pixel_height[pid] = cur_height + 1;
       *finished = false;
     }
