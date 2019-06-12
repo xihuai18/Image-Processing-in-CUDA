@@ -6,7 +6,6 @@
 #include <math_constants.h>
 #include <stdio.h>
 
-
 #define EPS 1e-6
 #define RES_UNIT_SIZE 10
 #define INF 1000000000
@@ -42,7 +41,8 @@ __global__ void kernel_pixel_pull(float* res_pixel, float* pull_pixel,
                                   int row);
 // pixel<-pull-pull_pixel
 
-__global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
+__global__ void kernel_pixel_relabel(unsigned int* res,
+                                     unsigned int* pixel_flow,
                                      int* pixel_height, int* bin_height,
                                      int img_size, int col, int row,
                                      int tile_size, int tile_col, int tile_row,
@@ -50,11 +50,12 @@ __global__ void kernel_pixel_relabel(float* res, float* pixel_flow,
 // relabel pixel height
 // Size of shared memory: 4 * (tile_size + bin_num + 1)
 
-__global__ void kernel_bin_relabel(float* res, float* pixel_flow,
-                                   float* bin_flow, int* pixel_height,
-                                   int* bin_height, int img_size, int col,
-                                   int row, int tile_size, int tile_col,
-                                   int tile_row, int bin_num, bool* finished);
+__global__ void kernel_bin_relabel(unsigned int* res, unsigned int* pixel_flow,
+                                   unsigned long long* bin_flow,
+                                   int* pixel_height, int* bin_height,
+                                   int img_size, int col, int row,
+                                   int tile_size, int tile_col, int tile_row,
+                                   int bin_num, bool* finished);
 // relabel bin by pixel
 // atomicCAS();
 
@@ -62,13 +63,13 @@ __global__ void kernel_bin_relabel_rectify(int* bin_height, int bin_num,
                                            bool* finished);
 // must be called after kernel_bin_relabel
 
-__global__ void kernel_bfs_init(float* res, int* bfs_pixel_height,
+__global__ void kernel_bfs_init(unsigned int* res, int* bfs_pixel_height,
                                 int* bfs_bin_height, int img_size, int col,
                                 int row, int bin_num);
 // init the pixels connected to source and the pixels connected to sink, 1, -1
 // or MAX
 
-__global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
+__global__ void kernel_pixel_bfs(unsigned int* res, int* bfs_pixel_height,
                                  int* bfs_bin_height, int img_size, int col,
                                  int row, int tile_size, int tile_col,
                                  int tile_row, int bin_num, int cur_height,
@@ -77,7 +78,7 @@ __global__ void kernel_pixel_bfs(float* res, int* bfs_pixel_height,
 // the bfs_bin_height and bfs_pixel_height are initialized to MAX
 // Size of shared memory: 4 * (tile_size + bin_num + 1)
 
-__global__ void kernel_bin_bfs(float* res, int* bfs_pixel_height,
+__global__ void kernel_bin_bfs(unsigned int* res, int* bfs_pixel_height,
                                int* bfs_bin_height, int img_size, int col,
                                int row, int bin_num, int cur_height,
                                bool* finished);

@@ -1,3 +1,6 @@
+#include <cuda.h>
+#include <cuda_runtime.h>
+
 const float lambda = 1.0;
 const float beta = 0.5;
 const int color_bin_size = 64;
