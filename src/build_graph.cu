@@ -192,9 +192,13 @@ __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
   }
 }
 
-float* buildGraph(int *src_img, int *mask_img, int img_height, int img_width) {
+unsigned int* buildGraph(
+                         int *src_img, 
+                         int *mask_img, 
+                         int img_height, 
+                         int img_width) {
   int img_size = img_height * img_width;
-  int img_num_bytes = sizeof(int) * img_size;
+  int img_num_bytes = sizeof(unsigned int) * img_size;
 
   // compute sigma square
   int *d_src_img, *d_mask_img;
@@ -226,7 +230,7 @@ float* buildGraph(int *src_img, int *mask_img, int img_height, int img_width) {
   return d_edges;
 }
 
-int* maxFlow(int img_height, int img_width, int *d_edges) {
+int* maxFlow(int img_height, int img_width, unsigned int *d_edges) {
   int color_bin_num = pow(256 / color_bin_size, 3);
 
   int img_size = img_height * img_width;
@@ -328,7 +332,7 @@ int* maxFlow(int img_height, int img_width, int *d_edges) {
 }
 
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
-  int *d_edges = buildGraph(src_img, mask_img, img_height, img_width);
+  unsigned int *d_edges = buildGraph(src_img, mask_img, img_height, img_width);
 
   int *segment = maxFlow(img_height, img_width, d_edges);
 
