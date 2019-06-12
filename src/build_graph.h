@@ -27,8 +27,8 @@ __global__ void computeEdges(float lambda, float beta, float *edges,
 __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
                      int img_size, int img_height, int img_width, int bin_size);
 
-unsigned long long int* buildGraph(int *src_img, int *mask_img, int img_height, int img_width);
+unsigned int* buildGraph(int *src_img, int *mask_img, int img_height, int img_width);
 
-int* maxFlow(int img_height, int img_width, unsigned long long int *d_edges);
+int* maxFlow(int img_height, int img_width, unsigned int *d_edges);
 
 int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width);
