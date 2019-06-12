@@ -3,10 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "onecut_kernel.h"
-
-int updiv(int x, int y) { return (x + y - 1) / y; }
+#include "build_graph.h"
 
 __device__ float sigma_square = 0;
+
+int updiv(int x, int y) { return (x + y - 1) / y; }
 
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b) {
   *b = pixel_value & 255;
@@ -131,11 +132,11 @@ __global__ void computeEdges(float lambda, float beta, float *edges,
                              int img_width, int img_height, int color_bin_size,
                              const int *__restrict__ src_img,
                              const int *__restrict__ mask_img) {
+  int coefficient = 1e6;
+
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
   int thread_id = block_id * blockDim.x + threadIdx.x;
 
-  // int color_bin_size = pow(256/color_bin_size, 3);
-  // int color_bin_size = 256/color_bin_size;
   int img_size = img_height * img_width;
   int edges_width = 6 + 2 + 2;
 
@@ -148,9 +149,9 @@ __global__ void computeEdges(float lambda, float beta, float *edges,
     // add s-t-links or t-t-links
     int seed_value = mask_img[thread_id];
     if (seed_value == 255 << 16) {  // s-t-links
-      edges[idx] = edges[idx + 8] = 1000;
+      edges[idx] = edges[idx + 8] = 1000 * coefficient;
     } else if (seed_value == 255 << 8) {  // t-t-links
-      edges[idx + 1] = 1000;
+      edges[idx + 1] = 1000 * coefficient;
     }
 
     // add a-link of color bins
@@ -161,13 +162,14 @@ __global__ void computeEdges(float lambda, float beta, float *edges,
     // add n-links
     int pixel_p = src_img[thread_id];
     if (thread_id % img_width + 1 < img_width) {  // right
-      edges[idx + 5] = edges[idx + edges_width + 4] =
+      edges[idx + 5] = edges[idx + edges_width + 4] = coefficient *
           gaussian(Di(pixel_p, src_img[thread_id + 1]), lambda, sigma_square);
     }
 
     if (thread_id + img_width < img_size) {  // down
-      edges[idx + 3] = edges[idx + img_width * edges_width + 2] = gaussian(
-          Di(pixel_p, src_img[thread_id + img_width]), lambda, sigma_square);
+      edges[idx + 3] = edges[idx + img_width * edges_width + 2] = coefficient * 
+          gaussian(Di(pixel_p, src_img[thread_id + img_width]), 
+                   lambda, sigma_square);
     }
   }
 }
@@ -190,14 +192,7 @@ __global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
   }
 }
 
-
-int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
-  float lambda = 1.0;
-  float beta = 0.5;
-  int color_bin_size = 64;
-  // int color_bin_num = 256/color_bin_size;
-  int color_bin_num = pow(256 / color_bin_size, 3);
-
+float* buildGraph(int *src_img, int *mask_img, int img_height, int img_width) {
   int img_size = img_height * img_width;
   int img_num_bytes = sizeof(int) * img_size;
 
@@ -212,7 +207,7 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
 
   // compute edges
   float *d_edges = NULL;
-  int edges_num_bytes = sizeof(float) * img_num_bytes * (6 + 2 + 2);
+  int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
   cudaMalloc((void **)&d_edges, edges_num_bytes);
 
   dim3 block0(1024, 1, 1), grid0(1, 1, 1);
@@ -222,14 +217,26 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
     grid0.x = updiv(img_size, 1024);
   }
   computeEdges<<<grid0, block0>>>(lambda, beta, d_edges, img_width, img_height,
-                                color_bin_size, d_src_img, d_mask_img);
+                                  color_bin_size, d_src_img, d_mask_img);
   CHECK(cudaDeviceSynchronize());
+
+  cudaFree(d_src_img);
+  cudaFree(d_mask_img);
+
+  return d_edges;
+}
+
+int* maxFlow(int img_height, int img_width, int *d_edges) {
+  int color_bin_num = pow(256 / color_bin_size, 3);
+
+  int img_size = img_height * img_width;
+  int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
 
   // initialize data for maxflow
   float *d_bin_flow, *d_pixel_flow, *d_pull_pixel;
   int *d_pixel_height, *d_bin_height;
   bool h_finished, *d_finished;
-  float *h_edges = (float *)malloc(edges_num_bytes);
+  int *h_edges = (int *)malloc(edges_num_bytes);
   float *h_pixel_flow = (float *)malloc(img_size * sizeof(float));
   float *h_bin_flow = (float *)malloc((color_bin_num + 1) * sizeof(float));
   int *h_pixel_height = (int *)malloc(img_size * sizeof(int));
@@ -316,16 +323,22 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   cudaFree(d_pull_pixel);
   cudaFree(d_pixel_height);
   cudaFree(d_bin_height);
-  cudaFree(d_edges);
-  cudaFree(d_src_img);
-  cudaFree(d_mask_img);
 
   return h_pixel_height;
 }
 
+int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
+  int *d_edges = buildGraph(src_img, mask_img, img_height, img_width);
+
+  int *segment = maxFlow(img_height, img_width, d_edges);
+
+  cudaFree(d_edges);
+
+  return segment;
+}
+
 int main(int argc, char **argv) {
   int img_height, img_width;
-//   int img_height = 2, img_width = 3;
 
   FILE *fp;
   fp = fopen(argv[1], "r");
