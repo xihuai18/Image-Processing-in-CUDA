@@ -111,7 +111,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 2], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 3], min_flow_push);
-      atomicAdd(&pixel_flow[img_idx], -min_flow_push);
+      atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
@@ -126,7 +126,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 3], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 2], min_flow_push);
-      atomicAdd(&pixel_flow[img_idx], -min_flow_push);
+      atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
@@ -141,7 +141,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 4], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 5], min_flow_push);
-      atomicAdd(&pixel_flow[img_idx], -min_flow_push);
+      atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
@@ -156,7 +156,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 5], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 4], min_flow_push);
-      atomicAdd(&pixel_flow[img_idx], -min_flow_push);
+      atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
   }

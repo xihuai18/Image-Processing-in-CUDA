@@ -133,7 +133,6 @@ __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
                              int img_width, int img_height, int color_bin_size,
                              const int *__restrict__ src_img,
                              const int *__restrict__ mask_img) {
-  int coefficient = 1e6;
 
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
   int thread_id = block_id * blockDim.x + threadIdx.x;
@@ -150,9 +149,9 @@ __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
     // add s-t-links or t-t-links
     int seed_value = mask_img[thread_id];
     if (seed_value == 255 << 16) {  // s-t-links
-      edges[idx] = edges[idx + 8] = 1000 * coefficient;
+      edges[idx] = edges[idx + 8] = MAX;
     } else if (seed_value == 255 << 8) {  // t-t-links
-      edges[idx + 1] = 1000 * coefficient;
+      edges[idx + 1] = MAX;
     }
 
     // add a-link of color bins
@@ -237,10 +236,11 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
   int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
 
   // initialize data for maxflow
-  unsigned long long *d_bin_flow unsigned int *d_pixel_flow, *d_pull_pixel;
+  unsigned long long *d_bin_flow;
+  unsigned int *d_pixel_flow, *d_pull_pixel;
   int *d_pixel_height, *d_bin_height;
   bool h_finished, *d_finished;
-  int *h_edges = (int *)malloc(edges_num_bytes);
+  // unsigned int *h_edges = (unsigned int *)malloc(edges_num_bytes);
   unsigned int *h_pixel_flow =
       (unsigned int *)malloc(img_size * sizeof(unsigned int));
   unsigned long long *h_bin_flow = (unsigned long long *)malloc(
@@ -255,7 +255,7 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
   cudaMalloc((void **)&d_pixel_height, img_size * sizeof(int));
   cudaMalloc((void **)&d_bin_height, (color_bin_num + 1) * sizeof(int));
   cudaMalloc((void **)&d_finished, sizeof(bool));
-  cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
+  // cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
   cudaMemset(d_bin_flow, 0, (color_bin_num + 1) * sizeof(unsigned long long));
   cudaMemset(d_pixel_flow, 0, img_size * sizeof(unsigned int));
   cudaMemset(d_pull_pixel, 0, img_size * sizeof(unsigned int));
@@ -320,7 +320,7 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
   cudaMemcpy(h_pixel_height, d_pixel_height, img_size * sizeof(int),
              cudaMemcpyDeviceToHost);
 
-  free(h_edges);
+  // free(h_edges);
   free(h_bin_flow);
   free(h_bin_height);
   free(h_pixel_flow);
