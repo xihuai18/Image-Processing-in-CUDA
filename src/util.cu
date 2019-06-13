@@ -51,7 +51,7 @@ __global__ void kernel_sharpen(int img_height, int img_width, int *res_img,
 }
 
 // 使用sobel算子进行图像的锐化
-int* imgSharpen(int img_height, int img_width, int *src_img) {
+int* imgSharpen(int *src_img, int img_height, int img_width) {
   int sobel_x[] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
   int sobel_y[] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};
   // copy to constant memory of device
@@ -118,7 +118,7 @@ __global__ void kernel_blur(int img_height, int img_width, int *res_img,
 }
 
 // 使用高斯核进行图像模糊处理
-int* imgBlur(int img_height, int img_width, int *src_img) {
+int* imgBlur(int *src_img, int img_height, int img_width) {
   calculateGaussKernel();
 
   int img_size = img_height * img_width;
