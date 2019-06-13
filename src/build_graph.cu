@@ -273,8 +273,7 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
     h_finished = true;
     cudaMemcpy(d_finished, &h_finished, sizeof(bool), cudaMemcpyHostToDevice);
     // relabel
-    kernel_pixel_relabel<<<grid1, block1,
-                           sizeof(int) * (34 * 34 + color_bin_num + 1)>>>(
+    kernel_pixel_relabel<<<grid1, block1, sizeof(int) * (34 * 34)>>>(
         d_edges, d_pixel_flow, d_pixel_height, d_bin_height, img_size,
         img_width, img_height, 34 * 34, 34, 34, color_bin_num, d_finished);
     kernel_bin_relabel<<<grid1, block1>>>(
@@ -303,11 +302,10 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
   do {
     h_finished = true;
     cudaMemcpy(d_finished, &h_finished, sizeof(bool), cudaMemcpyHostToDevice);
-    kernel_pixel_bfs<<<grid1, block1,
-                       sizeof(int) * (34 * 34 + color_bin_num + 1)>>>(
+    kernel_pixel_bfs<<<grid1, block1, sizeof(int) * (34 * 34)>>>(
         d_edges, d_pixel_height, d_bin_height, img_size, img_width, img_height,
         34 * 34, 34, 34, color_bin_num, cur_height, d_finished);
-    kernel_bin_bfs<<<grid1, block1, sizeof(int) * color_bin_num>>>(
+    kernel_bin_bfs<<<grid1, block1>>>(
         d_edges, d_pixel_height, d_bin_height, img_size, img_width, img_height,
         color_bin_num, cur_height, d_finished);
     cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);

@@ -379,8 +379,12 @@ __global__ void kernel_bfs_init(unsigned int* res, int* bfs_pixel_height,
   if (x < row && y < col) {
     bfs_pixel_height[pid] = (res[pid * RES_UNIT_SIZE + 8] > 0) ? 1 : INF;
   }
-  if (pid < bin_num) {
-    bfs_bin_height[pid] = INF;
+  if (pid < img_size) {
+    for (int offset = 0; offset < bin_num; offset += img_size) {
+      if (offset + pid < bin_num) {
+        bfs_bin_height[offset + pid] = INF;
+      }
+    }
   }
 }
 
@@ -480,13 +484,6 @@ __global__ void kernel_bin_bfs(unsigned int* res, int* bfs_pixel_height,
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
   int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
-
-  // load bfs_bin_height to shared memory
-  extern __shared__ int height[];
-  // if (block_pid < bin_num) {
-  //   height[block_pid] = bfs_bin_height[block_pid];
-  // }
-  __syncthreads();
 
   if (x < row && y < col && bfs_pixel_height[pid] > cur_height) {
     int bid = res[pid * RES_UNIT_SIZE + 6];
