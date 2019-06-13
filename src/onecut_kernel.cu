@@ -109,7 +109,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 2], -min_flow_push);
+      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 2], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 3], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
@@ -124,7 +124,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 3], -min_flow_push);
+      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 3], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 2], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
@@ -139,7 +139,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 4], -min_flow_push);
+      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 4], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 5], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
@@ -154,7 +154,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 5], -min_flow_push);
+      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 5], min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 4], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
@@ -167,7 +167,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
     // bin
     int bin_idx = res_pixel[img_idx * RES_UNIT_SIZE + 6];
     unsigned int max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 9];
-    unsigned int bin_res_flow = 0;
+    unsigned long long bin_res_flow = 0;
     unsigned int flow_pull = 0;
     unsigned long long new_bin_flow = 0;
     do {
