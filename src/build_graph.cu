@@ -407,6 +407,10 @@ int main(int argc, char **argv) {
     }
     printf("\n");
   }
+
   free(segment);
+  free(src_img);
+  free(mask_img);
+
   return 0;
 }

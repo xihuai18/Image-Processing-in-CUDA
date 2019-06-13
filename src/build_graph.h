@@ -1,3 +1,6 @@
+#ifndef BUILD_GRAPH_H
+#define BUILD_GRAPH_H
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -7,6 +10,7 @@ const int color_bin_size = 32;
 const int coefficient = 1e6;
 const unsigned int MAX = 1000000000;
 
+int updiv(int x, int y);
 
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b);
 
@@ -46,3 +50,5 @@ int* maxFlow(int img_height, int img_width,
              unsigned int *d_edges, int color_bin_num);
 
 int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width);
+
+#endif
