@@ -5,3 +5,6 @@
 *.cubin
 *.fatbin
 .vscode/
+*.exe
+test.*
+*.out

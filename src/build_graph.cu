@@ -158,7 +158,7 @@ __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
     // add a-link of color bins
     int color_bin_idx = getColorBinIdx(src_img[thread_id], color_bin_size);
     edges[idx + 5 + 1] = color_bin_idx;
-    edges[idx + 5 + 2] = edges[idx + 9] = beta;
+    edges[idx + 5 + 2] = edges[idx + 9] = beta * coefficient;
 
     // add n-links
     int pixel_p = src_img[thread_id];
