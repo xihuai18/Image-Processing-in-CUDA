@@ -3,7 +3,7 @@
 
 const float lambda = 1.0;
 const float beta = 0.5;
-const int color_bin_size = 64;
+const int color_bin_size = 32;
 const int coefficient = 1e6;
 const unsigned int MAX = 1000000000;
 
@@ -26,14 +26,23 @@ __device__ int getColorBinIdx(int pixel_value, int color_bin_size);
 
 __global__ void computeEdges(float lambda, float beta, float *edges,
                              int img_width, int img_height, int color_bin_size,
+                             int *bin_idx,
                              const int *__restrict__ src_img,
                              const int *__restrict__ mask_img);
 
-__global__ void init(float *res_pixel, float *pixel_flow, int *bin_height,
-                     int img_size, int img_height, int img_width, int bin_size);
+__global__ void init(unsigned int *res_pixel, unsigned int *pixel_flow,
+                     int *bin_height, int img_size, int img_height,
+                     int img_width, int bin_size);
 
-unsigned int* buildGraph(int *src_img, int *mask_img, int img_height, int img_width);
+__global__ void updateBinIdx(int img_height, int img_width,
+                             unsigned int *edges, 
+                             const int *__restrict__ bin_idx);
 
-int* maxFlow(int img_height, int img_width, unsigned int *d_edges);
+
+unsigned int* buildGraph(int *src_img, int *mask_img, 
+                         int img_height, int img_width, int *ptr_color_bin_num);
+
+int* maxFlow(int img_height, int img_width, 
+             unsigned int *d_edges, int color_bin_num);
 
 int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width);

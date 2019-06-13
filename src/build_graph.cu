@@ -111,8 +111,6 @@ __host__ void computeSigmaSquare(int img_height, int img_width,
 
   h_sigma_square /= N;
 
-  // printf("sigma_square = %lf\n", h_sigma_square);
-
   cudaMemcpyToSymbol(sigma_square, (void *)&h_sigma_square, sizeof(float));
 }
 
@@ -131,6 +129,7 @@ __device__ int getColorBinIdx(int pixel_value, int color_bin_size) {
 
 __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
                              int img_width, int img_height, int color_bin_size,
+                             int *bin_idx,
                              const int *__restrict__ src_img,
                              const int *__restrict__ mask_img) {
 
@@ -156,6 +155,7 @@ __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
 
     // add a-link of color bins
     int color_bin_idx = getColorBinIdx(src_img[thread_id], color_bin_size);
+    bin_idx[color_bin_idx] = 1;
     edges[idx + 5 + 1] = color_bin_idx;
     edges[idx + 5 + 2] = edges[idx + 9] = beta * coefficient;
 
@@ -194,8 +194,23 @@ __global__ void init(unsigned int *res_pixel, unsigned int *pixel_flow,
   }
 }
 
-unsigned int *buildGraph(int *src_img, int *mask_img, int img_height,
-                         int img_width) {
+__global__ void updateBinIdx(int img_height, int img_width,
+                             unsigned int *edges, 
+                             const int *__restrict__ bin_idx) {
+  int block_id = blockIdx.y * gridDim.x + blockIdx.x;
+  int thread_id = block_id * blockDim.x + threadIdx.x;
+  
+  int img_size = img_height * img_width;
+  int edges_width = 6 + 2 + 2;
+
+  if (thread_id < img_size) {
+    int idx = thread_id * (edges_width);
+    edges[idx + 5 + 1] = bin_idx[edges[idx + 5 + 1]];
+  }
+}
+
+unsigned int *buildGraph(int *src_img, int *mask_img, 
+                         int img_height, int img_width, int *ptr_color_bin_num) {
   int img_size = img_height * img_width;
   int img_num_bytes = sizeof(unsigned int) * img_size;
 
@@ -213,6 +228,11 @@ unsigned int *buildGraph(int *src_img, int *mask_img, int img_height,
   int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
   cudaMalloc((void **)&d_edges, edges_num_bytes);
 
+  int *d_bin_idx = NULL;
+  int bin_num_bytes = sizeof(int) * (*ptr_color_bin_num);
+  cudaMalloc((void**)&d_bin_idx, bin_num_bytes);
+  cudaMemset(d_bin_idx, 0, bin_num_bytes);
+
   dim3 block0(1024, 1, 1), grid0(1, 1, 1);
   if (img_size < 1024) {
     block0.x = img_size;
@@ -220,20 +240,38 @@ unsigned int *buildGraph(int *src_img, int *mask_img, int img_height,
     grid0.x = updiv(img_size, 1024);
   }
   computeEdges<<<grid0, block0>>>(lambda, beta, d_edges, img_width, img_height,
-                                  color_bin_size, d_src_img, d_mask_img);
+                                  color_bin_size, d_bin_idx, d_src_img, 
+                                  d_mask_img);
+
+  int *h_bin_idx = (int*)malloc(bin_num_bytes);
+  cudaMemcpy(h_bin_idx, d_bin_idx, bin_num_bytes, cudaMemcpyDeviceToHost);
+  
+  // compress the number of bins
+  int idx = 0;
+  for (int i = 0; i < (*ptr_color_bin_num); ++i) {
+    if (h_bin_idx[i]) {
+      h_bin_idx[i] = idx++;
+    }
+  }
+  *ptr_color_bin_num = idx;
+
+  cudaMemcpy(d_bin_idx, h_bin_idx, bin_num_bytes, cudaMemcpyHostToDevice);
+  updateBinIdx<<<grid0, block0>>>(img_height, img_width, d_edges, d_bin_idx);
   CHECK(cudaDeviceSynchronize());
 
+  free(h_bin_idx);
+    
+  cudaFree(d_bin_idx);
   cudaFree(d_src_img);
   cudaFree(d_mask_img);
 
   return d_edges;
 }
 
-int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
-  int color_bin_num = pow(256 / color_bin_size, 3);
-
+int *maxFlow(int img_height, int img_width, 
+             unsigned int *d_edges, int color_bin_num) {
   int img_size = img_height * img_width;
-  int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
+  // int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
 
   // initialize data for maxflow
   unsigned long long *d_bin_flow;
@@ -334,9 +372,11 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges) {
 }
 
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
-  unsigned int *d_edges = buildGraph(src_img, mask_img, img_height, img_width);
-
-  int *segment = maxFlow(img_height, img_width, d_edges);
+  int color_bin_num = pow(256 / color_bin_size, 3);
+  unsigned int *d_edges = buildGraph(src_img, mask_img, 
+                                     img_height, img_width, &color_bin_num);
+  
+  int *segment = maxFlow(img_height, img_width, d_edges, color_bin_num);
 
   cudaFree(d_edges);
 
