@@ -21,23 +21,23 @@
     }                                                        \
   }
 
-__device__ bool fgreater(float x, float y);
+// __device__ bool fgreater(float x, float y);
 
-__device__ bool fless(float x, float y);
+// __device__ bool fless(float x, float y);
 
-__device__ bool fequal(float x, float y);
+// __device__ bool fequal(float x, float y);
 
-__device__ static float atomicCAS(float* address, float compared, float val);
+// __device__ static float atomicCAS(float* address, float compared, float val);
 
-__global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
-                                  float* pixel_flow, float* pull_pixel,
+__global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* bin_flow,
+                                  unsigned int* pixel_flow, unsigned int* pull_pixel,
                                   int* pixel_height, int* bin_height,
                                   int img_size, int col, int row, int tile_size,
                                   int tile_col, int tile_row, int bin_num);
 // pixel-push->pull_pixel,bin
 
-__global__ void kernel_pixel_pull(float* res_pixel, float* pull_pixel,
-                                  float* pixel_flow, int img_size, int col,
+__global__ void kernel_pixel_pull(unsigned int* res_pixel, unsigned int* pull_pixel,
+                                  unsigned int* pixel_flow, int img_size, int col,
                                   int row);
 // pixel<-pull-pull_pixel
 
@@ -60,7 +60,7 @@ __global__ void kernel_bin_relabel(unsigned int* res, unsigned int* pixel_flow,
 // atomicCAS();
 
 __global__ void kernel_bin_relabel_rectify(int* bin_height, int bin_num,
-                                           bool* finished);
+    bool* finished);
 // must be called after kernel_bin_relabel
 
 __global__ void kernel_bfs_init(unsigned int* res, int* bfs_pixel_height,

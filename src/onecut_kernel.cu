@@ -1,19 +1,19 @@
 #include "onecut_kernel.h"
 
-__device__ bool fgreater(float x, float y) { return x - y > EPS; }
+// __device__ bool fgreater(float x, float y) { return x - y > EPS; }
 
-__device__ bool fless(float x, float y) { return x - y < -EPS; }
+// __device__ bool fless(float x, float y) { return x - y < -EPS; }
 
-__device__ bool fequal(float x, float y) { return fabsf(x - y) < EPS; }
+// __device__ bool fequal(float x, float y) { return fabsf(x - y) < EPS; }
 
-__device__ static float atomicCAS(float* address, float compared, float val) {
-  int* address_as_i = (int*)address;
-  return __int_as_float(
-      ::atomicCAS(address_as_i, __float_as_int(compared), __float_as_int(val)));
-}
+// __device__ static float atomicCAS(float* address, float compared, float val) {
+//   int* address_as_i = (int*)address;
+//   return __int_as_float(
+//       ::atomicCAS(address_as_i, __float_as_int(compared), __float_as_int(val)));
+// }
 
-__global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
-                                  float* pixel_flow, float* pull_pixel,
+__global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* bin_flow,
+                                  unsigned int* pixel_flow, unsigned int* pull_pixel,
                                   int* pixel_height, int* bin_height,
                                   int img_size, int col, int row, int tile_size,
                                   int tile_col, int tile_row, int bin_num) {
@@ -23,7 +23,7 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
   int img_idx = __umul24(img_y, col) + img_x;
 
   // can use shared memory
-  extern __shared__ float local_res_pixel[];
+  extern __shared__ unsigned int local_res_pixel[];
 
   // the block size should be the size of the tile
   int thread_idx = threadIdx.x + __umul24(blockDim.x, threadIdx.y);
@@ -58,16 +58,16 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
 
   __syncthreads();
 
-  float max_flow_push = pixel_flow[img_idx], min_flow_push = 0, tmp_res;
+  unsigned int max_flow_push = pixel_flow[img_idx], min_flow_push = 0, tmp_res;
   int tmp_idx;
   // the thread in the img_block
   if (img_x < col && img_y < row) {
     // to the sink
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 1];
     min_flow_push = max_flow_push;
-    if (fgreater(tmp_res, 0) && fgreater(max_flow_push, 0) &&
+    if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       res_pixel[img_idx * RES_UNIT_SIZE + 1] = tmp_res - min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
     }
@@ -75,25 +75,25 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 0];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    if (fgreater(tmp_res, 0) && fgreater(max_flow_push, 0) &&
+    if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_num] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       res_pixel[img_idx * RES_UNIT_SIZE + 0] = tmp_res - min_flow_push;
       res_pixel[img_idx * RES_UNIT_SIZE + 8] += min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
       atomicAdd(&bin_flow[bin_num], min_flow_push);
     }
     // bin
-    int bin_idx = lrintf(local_res_pixel[tile_idx * RES_UNIT_SIZE + 6]);
+    int bin_idx = local_res_pixel[tile_idx * RES_UNIT_SIZE + 6];
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 7];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
 
     // printf("%d %d\n", img_idx, tmp_idx);
     // //printf("%d %d\n", img_idx, tmp_idx);
-    if (fgreater(tmp_res, 0) && fgreater(max_flow_push, 0) &&
+    if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_idx] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       res_pixel[img_idx * RES_UNIT_SIZE + 7] = tmp_res - min_flow_push;
       res_pixel[img_idx * RES_UNIT_SIZE + 9] += min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
@@ -105,15 +105,10 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 2];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // //printf("%d %d %0.2lf %0.2lf\n", img_idx, bin_idx, tmp_res,
-    // max_flow_push);
-    // //printf("%d %d\n", img_idx, tmp_idx);
-    // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size &&
-        fgreater(local_res_pixel[tile_idx * RES_UNIT_SIZE + 2], 0) &&
-        fgreater(max_flow_push, 0) &&
+        tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 2], -min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 3], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
@@ -126,10 +121,9 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     min_flow_push = max_flow_push;
     // printf("%d %d %0.2f %0.2f\n", img_idx, tmp_idx, tmp_res, max_flow_push);
     if (tmp_idx >= 0 && tmp_idx < img_size &&
-        fgreater(local_res_pixel[tile_idx * RES_UNIT_SIZE + 3], 0) &&
-        fgreater(max_flow_push, 0) &&
+        tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 3], -min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 2], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
@@ -142,10 +136,9 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     min_flow_push = max_flow_push;
     // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size &&
-        fgreater(local_res_pixel[tile_idx * RES_UNIT_SIZE + 4], 0) &&
-        fgreater(max_flow_push, 0) &&
+        tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 4], -min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 5], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
@@ -158,10 +151,9 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     min_flow_push = max_flow_push;
     // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size &&
-        fgreater(local_res_pixel[tile_idx * RES_UNIT_SIZE + 5], 0) &&
-        fgreater(max_flow_push, 0) &&
+        tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
-      (fless(tmp_res, max_flow_push)) ? min_flow_push = tmp_res : 0;
+      (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
       atomicAdd(&res_pixel[img_idx * RES_UNIT_SIZE + 5], -min_flow_push);
       atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 4], min_flow_push);
       atomicAdd(&pixel_flow[img_idx], -min_flow_push);
@@ -173,25 +165,25 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
   // atomicCAS();
   if (img_x < col && img_y < row) {
     // bin
-    int bin_idx = lrintf(res_pixel[img_idx * RES_UNIT_SIZE + 6]);
-    float max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 9];
-    float bin_res_flow = 0;
-    float flow_pull = 0;
-    float new_bin_flow = 0;
+    int bin_idx = res_pixel[img_idx * RES_UNIT_SIZE + 6];
+    unsigned int max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 9];
+    unsigned int bin_res_flow = 0;
+    unsigned int flow_pull = 0;
+    unsigned long long new_bin_flow = 0;
     do {
       bin_res_flow = bin_flow[bin_idx];
-      if (fgreater(res_pixel[img_idx * RES_UNIT_SIZE + 9], 0) &&
-          fgreater(bin_res_flow, 0) &&
+      if (max_flow_pull > 0 &&
+          bin_res_flow > 0 &&
           bin_height[bin_idx] == pixel_height[img_idx] + 1) {
         flow_pull =
-            fless(max_flow_pull, bin_res_flow) ? max_flow_pull : bin_res_flow;
+            max_flow_pull < bin_res_flow ? max_flow_pull : bin_res_flow;
         new_bin_flow = bin_res_flow - flow_pull;
       } else {
         flow_pull = 0;
         break;
       }
-    } while (!fequal(bin_res_flow, atomicCAS(&bin_flow[bin_idx], bin_res_flow,
-                                             new_bin_flow)));
+    } while (bin_res_flow != atomicCAS(&bin_flow[bin_idx], bin_res_flow,
+                                             new_bin_flow));
     pixel_flow[img_idx] += flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 9] -= flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 7] += flow_pull;
@@ -200,26 +192,26 @@ __global__ void kernel_pixel_push(float* res_pixel, float* bin_flow,
     max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 8];
     do {
       bin_res_flow = bin_flow[bin_num];
-      if (fgreater(res_pixel[img_idx * RES_UNIT_SIZE + 8], 0) &&
-          fgreater(bin_res_flow, 0) &&
+      if (max_flow_pull > 0 &&
+          bin_res_flow > 0 &&
           bin_height[bin_num] == pixel_height[img_idx] + 1) {
         flow_pull =
-            fless(max_flow_pull, bin_res_flow) ? max_flow_pull : bin_res_flow;
+            max_flow_pull < bin_res_flow ? max_flow_pull : bin_res_flow;
         new_bin_flow = bin_res_flow - flow_pull;
       } else {
         flow_pull = 0;
         break;
       }
-    } while (!fequal(bin_res_flow, atomicCAS(&bin_flow[bin_num], bin_res_flow,
-                                             new_bin_flow)));
+    } while (bin_res_flow != atomicCAS(&bin_flow[bin_num], bin_res_flow,
+                                             new_bin_flow));
     pixel_flow[img_idx] += flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 8] -= flow_pull;
     res_pixel[img_idx * RES_UNIT_SIZE + 0] += flow_pull;
   }
 }
 
-__global__ void kernel_pixel_pull(float* res_pixel, float* pull_pixel,
-                                  float* pixel_flow, int img_size, int col,
+__global__ void kernel_pixel_pull(unsigned int* res_pixel, unsigned int* pull_pixel,
+                                  unsigned int* pixel_flow, int img_size, int col,
                                   int row) {
   // pixel<-pull-pull_pixel
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
