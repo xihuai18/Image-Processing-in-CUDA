@@ -244,7 +244,7 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
   int x = blockIdx.y * blockDim.y + threadIdx.y;
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
-  int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
+  // int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
   int tile_pid = (threadIdx.y + 1) * tile_col + threadIdx.x + 1;
 
   // load pixel_height to shared memory
@@ -266,7 +266,7 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
         (y + 1 < col && x < row) ? pixel_height[pid + 1] : INF;
   }
   // if (block_pid <= bin_num) {
-  //   height[tile_size + block_pid] = bin_height[block_pid];
+    // height[tile_size + block_pid] = bin_height[block_pid];
   // }
   __syncthreads();
 
@@ -406,7 +406,7 @@ __global__ void kernel_pixel_bfs(unsigned int* res, int* bfs_pixel_height,
   int x = blockIdx.y * blockDim.y + threadIdx.y;
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
-  int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
+  // int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
   int tile_pid = (threadIdx.y + 1) * tile_col + threadIdx.x + 1;
 
   // load bfs_pixel_height to shared memory
@@ -429,7 +429,7 @@ __global__ void kernel_pixel_bfs(unsigned int* res, int* bfs_pixel_height,
         (y + 1 < col && x < row) ? bfs_pixel_height[pid + 1] : -INF;
   }
   // if (block_pid <= bin_num) {
-  //   height[tile_size + block_pid] = bfs_bin_height[block_pid];
+    // height[tile_size + block_pid] = bfs_bin_height[block_pid];
   // }
   __syncthreads();
 
@@ -483,7 +483,7 @@ __global__ void kernel_bin_bfs(unsigned int* res, int* bfs_pixel_height,
   int x = blockIdx.y * blockDim.y + threadIdx.y;
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
-  int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
+  // int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
 
   if (x < row && y < col && bfs_pixel_height[pid] > cur_height) {
     int bid = res[pid * RES_UNIT_SIZE + 6];

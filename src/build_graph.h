@@ -35,14 +35,15 @@ __global__ void init(unsigned int *res_pixel, unsigned int *pixel_flow,
                      int img_width, int bin_size);
 
 __global__ void updateBinIdx(int img_height, int img_width,
-                             unsigned int *edges, 
+                             unsigned int *edges,
                              const int *__restrict__ bin_idx);
 
 
-unsigned int* buildGraph(int *src_img, int *mask_img, 
+unsigned int* buildGraph(int *src_img, int *mask_img,
                          int img_height, int img_width, int *ptr_color_bin_num);
 
-int* maxFlow(int img_height, int img_width, 
+int* maxFlow(int img_height, int img_width,
              unsigned int *d_edges, int color_bin_num);
 
 int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width);
+

@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include "build_graph.h"
 #include "onecut_kernel.h"
-
+#include "common.h"
 
 __device__ float sigma_square = 0;
 
-int updiv(int x, int y) { return (x + y - 1) / y; }
+
 
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b) {
   *b = pixel_value & 255;
@@ -277,14 +277,15 @@ int *maxFlow(int img_height, int img_width,
   unsigned long long *d_bin_flow;
   unsigned int *d_pixel_flow, *d_pull_pixel;
   int *d_pixel_height, *d_bin_height;
-  bool h_finished, *d_finished;
+  bool * h_finished, *d_finished;
   // unsigned int *h_edges = (unsigned int *)malloc(edges_num_bytes);
-  unsigned int *h_pixel_flow =
-      (unsigned int *)malloc(img_size * sizeof(unsigned int));
-  unsigned long long *h_bin_flow = (unsigned long long *)malloc(
-      (color_bin_num + 1) * sizeof(unsigned long long));
+  // unsigned int *h_pixel_flow =
+      // (unsigned int *)malloc(img_size * sizeof(unsigned int));
+  // unsigned long long *h_bin_flow = (unsigned long long *)malloc(
+      // (color_bin_num + 1) * sizeof(unsigned long long));
   int *h_pixel_height = (int *)malloc(img_size * sizeof(int));
   int *h_bin_height = (int *)malloc((color_bin_num + 1) * sizeof(int));
+  cudaMallocHost((void**)&h_finished , sizeof(bool));
 
   cudaMalloc((void **)&d_bin_flow,
              (color_bin_num + 1) * sizeof(unsigned long long));
@@ -308,8 +309,8 @@ int *maxFlow(int img_height, int img_width,
   dim3 block_bin(1024);
   dim3 grid_bin(updiv(color_bin_num + 1, 1024));
   do {
-    h_finished = true;
-    cudaMemcpy(d_finished, &h_finished, sizeof(bool), cudaMemcpyHostToDevice);
+    *h_finished = true;
+    cudaMemcpy(d_finished, h_finished, sizeof(bool), cudaMemcpyHostToDevice);
     // relabel
     kernel_pixel_relabel<<<grid1, block1, sizeof(int) * (34 * 34)>>>(
         d_edges, d_pixel_flow, d_pixel_height, d_bin_height, img_size,
@@ -329,8 +330,8 @@ int *maxFlow(int img_height, int img_width,
     kernel_pixel_pull<<<grid1, block1>>>(d_edges, d_pull_pixel, d_pixel_flow,
                                          img_size, img_width, img_height);
     CHECK(cudaDeviceSynchronize());
-    cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
-  } while (!h_finished);
+    cudaMemcpy(h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
+  } while (!(*h_finished));
 
   // bfs
   kernel_bfs_init<<<grid1, block1>>>(d_edges, d_pixel_height, d_bin_height,
@@ -338,17 +339,17 @@ int *maxFlow(int img_height, int img_width,
                                      color_bin_num);
   int cur_height = 1;
   do {
-    h_finished = true;
-    cudaMemcpy(d_finished, &h_finished, sizeof(bool), cudaMemcpyHostToDevice);
+    *h_finished = true;
+    cudaMemcpy(d_finished, h_finished, sizeof(bool), cudaMemcpyHostToDevice);
     kernel_pixel_bfs<<<grid1, block1, sizeof(int) * (34 * 34)>>>(
         d_edges, d_pixel_height, d_bin_height, img_size, img_width, img_height,
         34 * 34, 34, 34, color_bin_num, cur_height, d_finished);
     kernel_bin_bfs<<<grid1, block1>>>(
         d_edges, d_pixel_height, d_bin_height, img_size, img_width, img_height,
         color_bin_num, cur_height, d_finished);
-    cudaMemcpy(&h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
     cur_height++;
-  } while (!h_finished);
+  } while (!(*h_finished));
 
   // segment
   kernel_segment<<<grid1, block1>>>(d_pixel_height, img_size, img_width,
@@ -357,9 +358,10 @@ int *maxFlow(int img_height, int img_width,
              cudaMemcpyDeviceToHost);
 
   // free(h_edges);
-  free(h_bin_flow);
+  // free(h_bin_flow);
+  // free(h_pixel_flow);
   free(h_bin_height);
-  free(h_pixel_flow);
+  // free(h_pixel_height);
 
   cudaFree(d_finished);
   cudaFree(d_bin_flow);
@@ -370,6 +372,7 @@ int *maxFlow(int img_height, int img_width,
 
   return h_pixel_height;
 }
+
 
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   int color_bin_num = pow(256 / color_bin_size, 3);
