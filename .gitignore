@@ -9,3 +9,6 @@
 test.*
 *.out
 *.txt
+./src/*.txt
+./src/*.jpg
+./src/*.py
