@@ -10,8 +10,6 @@ const int color_bin_size = 32;
 const int coefficient = 1e6;
 const unsigned int MAX = 1000000000;
 
-int updiv(int x, int y);
-
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b);
 
 __device__ int Di(int pixel_p, int pixel_q);
