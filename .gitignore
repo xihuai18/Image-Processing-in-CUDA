@@ -12,3 +12,4 @@ test.*
 ./src/*.txt
 ./src/*.jpg
 ./src/*.py
+./tmp/
