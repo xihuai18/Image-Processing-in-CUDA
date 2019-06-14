@@ -1,2 +1,2 @@
-# Onecut-in-CUDA
-Implementation of Onecut in CUDA
+# Image Processing in CUDA
+Implementation of image processing methods in CUDA
