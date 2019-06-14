@@ -1,0 +1,79 @@
+\documentclass[12pt,AutoFakeBold]{ctexart}
+\usepackage{xeCJK}
+    \setCJKmainfont{SimSun}         % 缺省中文字体为宋体
+    \setmainfont{Times New Roman}   % 缺省英文字体 Times New Roman
+\usepackage{float}
+\usepackage{listingsutf8}
+\usepackage{graphicx}
+\usepackage{appendix}
+\usepackage[colorlinks]{hyperref}
+\usepackage{amsmath}
+\usepackage{fancyhdr}
+\usepackage{vmargin}
+\usepackage{indentfirst}
+\usepackage{enumerate}
+\usepackage{textcomp}
+\usepackage{cite}
+\usepackage{xcolor}
+\setmarginsrb{3 cm}{2.5 cm}{3 cm}{2.5 cm}{1 cm}{1.5 cm}{1 cm}{1.5 cm}
+\pagestyle{fancy}
+\lhead{基于CUDA的图像处理工具包}
+\rhead{\thepage}
+\cfoot{}
+\lstset{frameshape={RYRYNYYYY}{yny}{yny}{RYRYNYYYY}, backgroundcolor=\color[RGB]{245,245,244}}
+\definecolor{keywords}{rgb}{0,0,0.7}
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mymauve}{rgb}{0.58,0,0.82}
+\lstset{frameshape={RYRYNYYYY}{yny}{yny}{RYRYNYYYY}, backgroundcolor=\color[RGB]{245,245,244}, keywordstyle=\color{keywords},commentstyle=\color{mygreen}, stringstyle=\color{mymauve}}
+\begin{document}
+
+    \begin{titlepage}
+        \centering
+        \vspace*{0.5 cm}
+        \includegraphics[scale = 0.5]{img/SYSULogo.png}\\[1.0 cm] % University Logo
+        \textsc{\LARGE 数据科学与计算机学院}\\[0.2 cm]
+        \textsc{\Large 多核程序设计课程设计}\\[0.2 cm]
+        \textsc{\large 基于CUDA的图像处理工具包}\\[0.2 cm]
+        \rule{\linewidth}{0.2 mm} \\[0.4 cm]
+        { \huge \bfseries}
+        
+        \begin{minipage}{0.4\textwidth}
+                \begin{flushright} 
+                \emph{组员：姓名（学号）} \\
+                王锡淮（16337236）\linebreak
+                肖遥（16337258）\linebreak
+                杨陈泽（16337271）\linebreak
+                叶广智（16337287）\linebreak
+                % Your Student Number
+            \end{flushright}
+        \end{minipage}\\[2 cm]
+        \vfill
+        
+    \end{titlepage}
+\bibliographystyle{unsrt}
+
+
+
+\tableofcontents
+\newpage
+
+\textbf{摘要：}
+
+\section{项目简介}
+
+\subsection{选题}
+
+\subsection{预期目标}
+
+\section{实现内容}
+% 方法介绍+相关工作
+
+\section{实现过程}
+% 难点+优化
+
+\section{实验结果}
+
+\renewcommand\refname{参考文献} 
+% \bibliography{mybib}
+
+\end{document}
