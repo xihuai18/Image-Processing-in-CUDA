@@ -97,24 +97,24 @@ __global__ void CLAHE(int * hsi_img, int height, int width)
     }
     __syncthreads();
 
-    if(thread_idx < 256) {
-        for (int i = 0; i < 9; ++i)
-        {
-            int overflow = (frq[i*256+thread_idx] > THRESHOLD)? frq[i*256+thread_idx] - THRESHOLD : 0;
-            frq[i*256+thread_idx] -= overflow;
-            atomicAdd(&frq[9*256+i], overflow);
-        }
-    }
-    __syncthreads();
+    // if(thread_idx < 256) {
+    //     for (int i = 0; i < 9; ++i)
+    //     {
+    //         int overflow = (frq[i*256+thread_idx] > THRESHOLD)? frq[i*256+thread_idx] - THRESHOLD : 0;
+    //         frq[i*256+thread_idx] -= overflow;
+    //         atomicAdd(&frq[9*256+i], overflow);
+    //     }
+    // }
+    // __syncthreads();
 
-    if(thread_idx < 256) {
-        for (int i = 0; i < 9; ++i)
-        {
-            frq[i*256+thread_idx] += frq[9*256+i]/256;
-        }
-    }
+    // if(thread_idx < 256) {
+    //     for (int i = 0; i < 9; ++i)
+    //     {
+    //         frq[i*256+thread_idx] += frq[9*256+i]/256;
+    //     }
+    // }
 
-    __syncthreads();
+    // __syncthreads();
 
     for (int i = 0; i < 9; ++i)
     {
@@ -148,7 +148,7 @@ __global__ void CLAHE(int * hsi_img, int height, int width)
         tmp_x = lt_x + TILESIZE*2;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255;
+            hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255;
         }
     }
 }
@@ -164,7 +164,6 @@ int* imgCLAHE(int *src_img, int img_height, int img_width)
     dim3 block(TILESIZE,TILESIZE);
     dim3 grid1(updiv(img_width, TILESIZE), updiv(img_height, TILESIZE));
     dim3 grid2(updiv(img_width, TILESIZE*3), updiv(img_height, TILESIZE*3));
-    // cudaMemcpy(ret_img, d_hsi_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
     RGB2HSI<<<grid1, block>>>(d_rgb_img, d_hsi_img, img_height, img_width);
     CLAHE<<<grid2, block>>>(d_hsi_img, img_height, img_width);
     HSI2RGB<<<grid1, block>>>(d_hsi_img, d_rgb_img, img_height, img_width);

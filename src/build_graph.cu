@@ -9,7 +9,6 @@
 __device__ float sigma_square = 0;
 
 
-
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b) {
   *b = pixel_value & 255;
   pixel_value >>= 8;
@@ -384,32 +383,4 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   cudaFree(d_edges);
 
   return segment;
-}
-
-int main(int argc, char **argv) {
-  int img_height, img_width;
-
-  FILE *fp;
-  fp = fopen(argv[1], "r");
-  fscanf(fp, "%d%d", &img_height, &img_width);
-
-  int *src_img = (int *)malloc(sizeof(int) * img_height * img_width);
-  int *mask_img = (int *)malloc(sizeof(int) * img_height * img_width);
-  for (int i = 0; i < img_height * img_width; ++i) {
-    fscanf(fp, "%d", &src_img[i]);
-  }
-  for (int i = 0; i < img_height * img_width; ++i) {
-    fscanf(fp, "%d", &mask_img[i]);
-  }
-  fclose(fp);
-
-  int *segment = getCutMask(src_img, mask_img, img_height, img_width);
-  for (int j = 0; j < img_width; ++j) {
-    for (int i = 0; i < img_height; ++i) {
-      printf("%c", segment[i * img_width + j] == 0 ? ' ' : '#');
-    }
-    printf("\n");
-  }
-  free(segment);
-  return 0;
 }
