@@ -245,6 +245,7 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
   computeEdges<<<grid0, block0>>>(lambda, beta, d_edges, img_width, img_height,
                                   color_bin_size, d_bin_idx, d_src_img, 
                                   d_mask_img);
+  CHECK(cudaDeviceSynchronize());
 
   int *h_bin_idx = (int*)malloc(bin_num_bytes);
   cudaMemcpy(h_bin_idx, d_bin_idx, bin_num_bytes, cudaMemcpyDeviceToHost);
@@ -382,7 +383,18 @@ int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   unsigned int *d_edges = buildGraph(src_img, mask_img, 
                                      img_height, img_width, &color_bin_num);
   
-  int *segment = maxFlow(img_height, img_width, d_edges, color_bin_num);
+  int edges_size = sizeof(unsigned int) * img_height * img_width * (6 + 2 + 2);
+  unsigned int *edges = (unsigned int*)malloc(edges_size);
+  cudaMemcpy(edges, d_edges, edges_size, cudaMemcpyDeviceToHost);
+  for (int j = 0; j < img_height * img_width; j++) {
+    for (int i = 0; i < (6 + 2 + 2); i++) {
+      printf("%d ", edges[j + i * img_height * img_width]);
+    }
+    printf("\n");
+  }
+
+  int *segment = NULL;
+  // int *segment = maxFlow(img_height, img_width, d_edges, color_bin_num);
 
   cudaFree(d_edges);
 
