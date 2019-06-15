@@ -10,8 +10,8 @@ __global__ void RGB2HSI(int *rgb_img, int *hsi_img, int height, int width) {
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, width) + img_x;
   if (img_x < width && img_y < height) {
-    int R = rgb_img[img_idx] >> 16, G = (rgb_img[img_idx] >> 8) & 0x00FF,
-        B = rgb_img[img_idx] & 0x0000FF;
+    int R = tex2D(tex1, tmp_x, tmp_y) >> 16, G = (tex2D(tex1, tmp_x, tmp_y) >> 8) & 0x00FF,
+        B = tex2D(tex1, tmp_x, tmp_y) & 0x0000FF;
     float theta = acosf(((R - G + R - B) / 2) /
                         sqrtf(powf(R - G, 2) + (R - B) * (G - B)));
     float H = (B <= G) ? theta : 2 * CUDART_PI_F - theta;
@@ -27,9 +27,9 @@ __global__ void HSI2RGB(int *hsi_img, int *rgb_img, int height, int width) {
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, width) + img_x;
   if (img_x < width && img_y < height) {
-    float H = (hsi_img[img_idx] >> 16) / 255.0 * 2 * CUDART_PI_F,
-          S = ((hsi_img[img_idx] >> 8) & 0x00FF) / 255.0,
-          I = (hsi_img[img_idx] & 0x0000FF) / 255.0;
+    float H = (tex2D(tex2, tmp_x, tmp_y) >> 16) / 255.0 * 2 * CUDART_PI_F,
+          S = ((tex2D(tex2, tmp_x, tmp_y) >> 8) & 0x00FF) / 255.0,
+          I = (tex2D(tex2, tmp_x, tmp_y) & 0x0000FF) / 255.0;
     int R, G, B;
     if (H >= 0 && H < 2 * CUDART_PI_F / 3) {
       B = I * (1 - S) * 255;
