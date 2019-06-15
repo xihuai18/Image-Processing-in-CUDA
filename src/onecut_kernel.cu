@@ -30,29 +30,29 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
   int tile_idx = threadIdx.x + 1 + __umul24(tile_col, threadIdx.y + 1);
   if (img_x < col && img_y < row) {
     for (int i = 0; i < RES_UNIT_SIZE; ++i) {
-      local_res_pixel[tile_idx * RES_UNIT_SIZE + i] =
-          res_pixel[img_idx * RES_UNIT_SIZE + i];
+      local_res_pixel[tile_idx + tile_size * i] =
+          res_pixel[img_idx + img_size * i];
     }
 
-    if (threadIdx.x == 0 && img_x > 0) {
-      for (int i = 0; i < RES_UNIT_SIZE; ++i)
-        local_res_pixel[(tile_idx - 1) * RES_UNIT_SIZE + i] =
-            res_pixel[(img_idx - 1) * RES_UNIT_SIZE + i];
-    }
-    if (threadIdx.x == tile_col - 2 && img_x < col - 1) {
-      for (int i = 0; i < RES_UNIT_SIZE; ++i)
-        local_res_pixel[(tile_idx + 1) * RES_UNIT_SIZE + i] =
-            res_pixel[(img_idx + 1) * RES_UNIT_SIZE + i];
-    }
     if (threadIdx.y == 0 && img_y > 0) {
       for (int i = 0; i < RES_UNIT_SIZE; ++i)
-        local_res_pixel[(tile_idx - tile_col) * RES_UNIT_SIZE + i] =
-            res_pixel[(img_idx - col) * RES_UNIT_SIZE + i];
+        local_res_pixel[(tile_idx - tile_col) + tile_size * i] =
+            res_pixel[(img_idx - col) + img_size * i];
     }
     if (threadIdx.y == tile_row - 2 && img_y < row - 1) {
       for (int i = 0; i < RES_UNIT_SIZE; ++i)
-        local_res_pixel[(tile_idx + tile_col) * RES_UNIT_SIZE + i] =
-            res_pixel[(img_idx + col) * RES_UNIT_SIZE + i];
+        local_res_pixel[(tile_idx + tile_col) + tile_size * i] =
+            res_pixel[(img_idx + col) + img_size * i];
+    }
+    if (threadIdx.x == 0 && img_x > 0) {
+      for (int i = 0; i < RES_UNIT_SIZE; ++i)
+        local_res_pixel[(tile_idx - 1) + tile_size * i] =
+            res_pixel[(img_idx - 1) + img_size * i];
+    }
+    if (threadIdx.x == tile_col - 2 && img_x < col - 1) {
+      for (int i = 0; i < RES_UNIT_SIZE; ++i)
+        local_res_pixel[(tile_idx + 1) + tile_size * i] =
+            res_pixel[(img_idx + 1) + img_size * i];
     }
   }
 
@@ -63,29 +63,29 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
   // the thread in the img_block
   if (img_x < col && img_y < row) {
     // to the sink
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 1];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 1];
     min_flow_push = max_flow_push;
     if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      res_pixel[img_idx * RES_UNIT_SIZE + 1] = tmp_res - min_flow_push;
+      res_pixel[img_idx + img_size * 1] = tmp_res - min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
     }
     // to the source
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 0];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 0];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
     if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_num] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      res_pixel[img_idx * RES_UNIT_SIZE + 0] = tmp_res - min_flow_push;
-      res_pixel[img_idx * RES_UNIT_SIZE + 8] += min_flow_push;
+      res_pixel[img_idx + img_size * 0] = tmp_res - min_flow_push;
+      res_pixel[img_idx + img_size * 8] += min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
       atomicAdd(&bin_flow[bin_num], min_flow_push);
     }
     // bin
-    int bin_idx = local_res_pixel[tile_idx * RES_UNIT_SIZE + 6];
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 7];
+    int bin_idx = local_res_pixel[tile_idx + tile_size * 6];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 7];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
 
@@ -94,29 +94,29 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
     if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      res_pixel[img_idx * RES_UNIT_SIZE + 7] = tmp_res - min_flow_push;
-      res_pixel[img_idx * RES_UNIT_SIZE + 9] += min_flow_push;
+      res_pixel[img_idx + img_size * 7] = tmp_res - min_flow_push;
+      res_pixel[img_idx + img_size * 9] += min_flow_push;
       pixel_flow[img_idx] -= min_flow_push;
       atomicAdd(&bin_flow[bin_idx], min_flow_push);
     }
 
     // up down left right
     tmp_idx = __umul24(img_y - 1, col) + img_x;
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 2];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 2];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
     if (tmp_idx >= 0 && tmp_idx < img_size &&
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 2], min_flow_push);
-      atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 3], min_flow_push);
+      atomicSub(&res_pixel[img_idx + img_size * 2], min_flow_push);
+      atomicAdd(&res_pixel[tmp_idx + img_size * 3], min_flow_push);
       atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
     tmp_idx = (img_y + 1) * col + img_x;
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 3];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 3];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
     // printf("%d %d %0.2f %0.2f\n", img_idx, tmp_idx, tmp_res, max_flow_push);
@@ -124,14 +124,14 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 3], min_flow_push);
-      atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 2], min_flow_push);
+      atomicSub(&res_pixel[img_idx + img_size * 3], min_flow_push);
+      atomicAdd(&res_pixel[tmp_idx + img_size * 2], min_flow_push);
       atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
     tmp_idx = __umul24(img_y, col) + img_x - 1;
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 4];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 4];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
     // printf("%d %d\n", img_idx, tmp_idx);
@@ -139,14 +139,14 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 4], min_flow_push);
-      atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 5], min_flow_push);
+      atomicSub(&res_pixel[img_idx + img_size * 4], min_flow_push);
+      atomicAdd(&res_pixel[tmp_idx + img_size * 5], min_flow_push);
       atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
 
     tmp_idx = __umul24(img_y, col) + img_x + 1;
-    tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 5];
+    tmp_res = local_res_pixel[tile_idx + tile_size * 5];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
     // printf("%d %d\n", img_idx, tmp_idx);
@@ -154,8 +154,8 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
         tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
-      atomicSub(&res_pixel[img_idx * RES_UNIT_SIZE + 5], min_flow_push);
-      atomicAdd(&res_pixel[tmp_idx * RES_UNIT_SIZE + 4], min_flow_push);
+      atomicSub(&res_pixel[img_idx + img_size * 5], min_flow_push);
+      atomicAdd(&res_pixel[tmp_idx + img_size * 4], min_flow_push);
       atomicSub(&pixel_flow[img_idx], min_flow_push);
       atomicAdd(&pull_pixel[tmp_idx], min_flow_push);
     }
@@ -165,8 +165,8 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
   // atomicCAS();
   if (img_x < col && img_y < row) {
     // bin
-    int bin_idx = res_pixel[img_idx * RES_UNIT_SIZE + 6];
-    unsigned int max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 9];
+    int bin_idx = res_pixel[img_idx + img_size * 6];
+    unsigned int max_flow_pull = res_pixel[img_idx + img_size * 9];
     unsigned long long bin_res_flow = 0;
     unsigned int flow_pull = 0;
     unsigned long long new_bin_flow = 0;
@@ -185,11 +185,11 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
     } while (bin_res_flow != atomicCAS(&bin_flow[bin_idx], bin_res_flow,
                                              new_bin_flow));
     pixel_flow[img_idx] += flow_pull;
-    res_pixel[img_idx * RES_UNIT_SIZE + 9] -= flow_pull;
-    res_pixel[img_idx * RES_UNIT_SIZE + 7] += flow_pull;
+    res_pixel[img_idx + img_size * 9] -= flow_pull;
+    res_pixel[img_idx + img_size * 7] += flow_pull;
 
     // source
-    max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 8];
+    max_flow_pull = res_pixel[img_idx + img_size * 8];
     do {
       bin_res_flow = bin_flow[bin_num];
       if (max_flow_pull > 0 &&
@@ -205,8 +205,8 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel, unsigned long long* b
     } while (bin_res_flow != atomicCAS(&bin_flow[bin_num], bin_res_flow,
                                              new_bin_flow));
     pixel_flow[img_idx] += flow_pull;
-    res_pixel[img_idx * RES_UNIT_SIZE + 8] -= flow_pull;
-    res_pixel[img_idx * RES_UNIT_SIZE + 0] += flow_pull;
+    res_pixel[img_idx + img_size * 8] -= flow_pull;
+    res_pixel[img_idx + img_size * 0] += flow_pull;
   }
 }
 

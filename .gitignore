@@ -12,10 +12,11 @@ test.*
 *.exp
 *.lib
 *.pdb
+*.py
 ./src/*.txt
 ./src/*.jpg
 ./src/*.py
-./tmp/
+./tmp
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
