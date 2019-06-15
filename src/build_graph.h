@@ -6,8 +6,8 @@
 
 const float lambda = 1.0;
 const float beta = 0.5;
-const int color_bin_size = 32;
-const int coefficient = 1e6;
+const int color_bin_size = 8;
+const int coefficient = 1e8;
 const unsigned int MAX = 1000000000;
 
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b);
