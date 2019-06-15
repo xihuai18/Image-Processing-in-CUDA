@@ -140,9 +140,6 @@ __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
 
   if (thread_id < img_size) {
     int idx = thread_id * (edges_width);
-    for (unsigned int i = 0; i < edges_width; ++i) {
-      edges[idx + i] = 0;
-    }
 
     // add s-t-links or t-t-links
     int seed_value = mask_img[thread_id];
@@ -226,6 +223,7 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
   unsigned int *d_edges = NULL;
   int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
   cudaMalloc((void **)&d_edges, edges_num_bytes);
+  cudaMemset(d_edges, 0, edges_num_bytes);
 
   int *d_bin_idx = NULL;
   int bin_num_bytes = sizeof(int) * (*ptr_color_bin_num);
