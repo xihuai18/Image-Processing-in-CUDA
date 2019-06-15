@@ -22,10 +22,10 @@ int main(int argc, char **argv) {
   }
   fclose(fp);
 
-  int *segment = getCutMask(src_img, mask_img, img_height, img_width);
+  int *segment = imgBlur(src_img, img_height, img_width);
   for (int j = 0; j < img_width; ++j) {
     for (int i = 0; i < img_height; ++i) {
-      printf("%c", segment[i * img_width + j] == 0 ? ' ' : '#');
+      printf("%d ", segment[i * img_width + j]);
     }
     printf("\n");
   }

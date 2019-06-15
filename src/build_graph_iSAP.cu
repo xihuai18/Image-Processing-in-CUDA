@@ -5,7 +5,7 @@
 #include <vector>
 #include "build_graph.h"
 #include "onecut_kernel.h"
-
+#include "common.h"
 
 __device__ float sigma_square = 0;
 

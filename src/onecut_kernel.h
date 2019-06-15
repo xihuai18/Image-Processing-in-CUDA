@@ -10,16 +10,7 @@
 #define RES_UNIT_SIZE 10
 #define INF 1000000000
 
-#define CHECK(call)                                          \
-  {                                                          \
-    const cudaError_t error = call;                          \
-    if (error != cudaSuccess) {                              \
-      fprintf(stderr, "Error: %s:%d, ", __FILE__, __LINE__); \
-      fprintf(stderr, "code: %d, reason: %s\n", error,       \
-              cudaGetErrorString(error));                    \
-      exit(1);                                               \
-    }                                                        \
-  }
+
 
 // __device__ bool fgreater(float x, float y);
 

@@ -21,7 +21,7 @@ __global__ void CLAHEPre(int * hsi_img, int * g_frq, int height, int width)
     }
     if (thread_idx == 0) {
         // printf("%d %d\n", blockIdx.x, blockIdx.y);
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 256; ++i)
         {
             frq[9*256+i] = 0;
         }
@@ -35,20 +35,17 @@ __global__ void CLAHEPre(int * hsi_img, int * g_frq, int height, int width)
         int tmp_y = lt_y + i*TILESIZE;
         int tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // atomicAdd(&frq[(i*3+0)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
-            atomicAdd(&frq[(i*3+0)*256+(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)], 1);
+            atomicAdd(&frq[(i*3+0)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
         }
         tmp_x = lt_x + TILESIZE;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // atomicAdd(&frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
-            atomicAdd(&frq[(i*3+1)*256+(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)], 1);
+            atomicAdd(&frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
         }
         tmp_x = lt_x + TILESIZE*2;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // atomicAdd(&frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
-            atomicAdd(&frq[(i*3+2)*256+(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)], 1);
+            atomicAdd(&frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)], 1);
         }
     }
     __syncthreads();
@@ -107,12 +104,12 @@ __global__ void CLAHEPre(int * hsi_img, int * g_frq, int height, int width)
 
 __global__ void CLAHEAft(int * hsi_img, int * g_frq, int height, int width)
 {
-    int over = 0;
-    int THRESHOLD = height * width / 4;
+    // int over = 0;
+    // int THRESHOLD = height * width / 4;
     int lt_x = __umul24(blockIdx.x, blockDim.x*3) + threadIdx.x,
       lt_y = __umul24(blockIdx.y, blockDim.y*3) + threadIdx.y;
     int lt_idx = __umul24(lt_y, width) + lt_x;
-    int thread_idx = threadIdx.x + threadIdx.y * blockDim.x;
+    // int thread_idx = threadIdx.x + threadIdx.y * blockDim.x;
 
     // if(blockIdx.x == 0 && blockIdx.y == 0) {
     //     if(thread_idx < 256) {
@@ -131,8 +128,7 @@ __global__ void CLAHEAft(int * hsi_img, int * g_frq, int height, int width)
         int tmp_y = lt_y + i*TILESIZE;
         int tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
-            hsi_img[tmp_idx] = (tex2D(tex2, tmp_x, tmp_y) & 0xFFFF00) + (1.0*g_frq[(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)]/(height*width))*255;
+            hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
             // if ((1.0*frq[(i*3+0)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
             //     printf("==>ERROR!\n");
             // }
@@ -140,8 +136,7 @@ __global__ void CLAHEAft(int * hsi_img, int * g_frq, int height, int width)
         tmp_x = lt_x + TILESIZE;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
-            hsi_img[tmp_idx] = (tex2D(tex2, tmp_x, tmp_y) & 0xFFFF00) + (1.0*g_frq[(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)]/(height*width))*255;
+            hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
             // if ((1.0*frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
             //     printf("==>ERROR!\n");
             // }
@@ -149,8 +144,7 @@ __global__ void CLAHEAft(int * hsi_img, int * g_frq, int height, int width)
         tmp_x = lt_x + TILESIZE*2;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
-            // hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
-            hsi_img[tmp_idx] = (tex2D(tex2, tmp_x, tmp_y) & 0xFFFF00) + (1.0*g_frq[(tex2D(tex2, tmp_x, tmp_y)&0x0000FF)]/(height*width))*255;
+            hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*g_frq[(hsi_img[tmp_idx]&0x0000FF)]/(height*width))*255;
             // if ((1.0*frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
                 // printf("==>ERROR!\n");
             // }
@@ -181,35 +175,21 @@ int* imgCLAHE_Global(int *src_img, int img_height, int img_width)
     cudaMalloc((void**)& d_g_frq, 256*sizeof(int));
     cudaMemset(d_g_frq, 0, 256*sizeof(int));
     cudaMemcpy(d_rgb_img, src_img, img_height*img_width*sizeof(int), cudaMemcpyHostToDevice);
-    
-    cudaChannelFormatDesc desc1 = cudaCreateChannelDesc<int> ();
-    cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<int> ();
-    cudaBindTexture2D(0, tex1, d_rgb_img, desc1, img_width, img_height, img_width*sizeof(int));
-    cudaBindTexture2D(0, tex2, d_hsi_img, desc2, img_width, img_height, img_width*sizeof(int));
-
     dim3 block(TILESIZE,TILESIZE);
     dim3 grid1(updiv(img_width, TILESIZE), updiv(img_height, TILESIZE));
     dim3 grid2(updiv(img_width, TILESIZE*3), updiv(img_height, TILESIZE*3));
 
-    // cudaMemcpy(h_img_one, d_hsi_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
     RGB2HSI<<<grid1, block>>>(d_rgb_img, d_hsi_img, img_height, img_width);
+
+    // cudaMemcpy(h_img_one, d_hsi_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
     CLAHEPre<<<grid2, block>>>(d_hsi_img, d_g_frq, img_height, img_width);
     CLAHEAft<<<grid2, block>>>(d_hsi_img, d_g_frq, img_height, img_width);
-    HSI2RGB<<<grid1, block>>>(d_hsi_img, d_rgb_img, img_height, img_width);
     // cudaMemcpy(h_img_two, d_hsi_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
     // if(!compare(h_img_one, h_img_two, img_height, img_width)) {
     //     printf("===> ERROR!HSI matrix changed!\n");
     // }
-    
+    HSI2RGB<<<grid1, block>>>(d_hsi_img, d_rgb_img, img_height, img_width);
     cudaMemcpy(ret_img, d_rgb_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
-    cudaUnbindTexture(tex1);
-    cudaUnbindTexture(tex2);
-    cudaFree(d_rgb_img);
-    cudaFree(d_hsi_img);
-    cudaFree(d_g_frq);
-    free(h_img_one);
-    free(h_img_two);
-
     return ret_img;
 }
 
