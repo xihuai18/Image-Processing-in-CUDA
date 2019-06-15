@@ -9,6 +9,9 @@
 test.*
 *.out
 *.txt
+*.exp
+*.lib
+*.pdb
 ./src/*.txt
 ./src/*.jpg
 ./src/*.py
