@@ -17,29 +17,42 @@ __global__ void kernel_sharpen(int img_height, int img_width, int *res_img,
   int thread_id = block_id * blockDim.x + threadIdx.x;
 
   int i = thread_id / img_width, j = thread_id % img_width;
-  if (i >= 1 && i < img_height - 1 && j >= 1 && j < img_width - 1) {
+
+  if (thread_id < img_height * img_width) {
     int kernel_index = 0;
     int sum_x[3] = {0}, sum_y[3] = {0};
     for(int row = i - 1; row <= i + 1;++row) {
       for(int col = j - 1; col <= j + 1; ++col) {
-        int src_img_value = src_img[row * img_width + col];
+        int src_img_value;
         int sobel_kernel_x_value = sobel_kernel_x[kernel_index];
         int sobel_kernel_y_value = sobel_kernel_y[kernel_index];
 
+        // 如果该点没越界
+        if (row >= 0 && row < img_height && col >= 0 && col < img_width) {
+          src_img_value = src_img[row * img_width + col];
+
+        // 如果该点越界，取该点与中心对称的点
+        } else {
+          int reflect_row = i + (i - row);
+          int reflect_col = j + (j - col);
+          src_img_value = src_img[reflect_row * img_width + reflect_col];
+        }
+          
         for (int k = 2; k >= 0; --k) {
           sum_x[k] += sobel_kernel_x_value * (src_img_value & 255);
           sum_y[k] += sobel_kernel_y_value * (src_img_value & 255);
           src_img_value >>= 8;
         }
+        ++kernel_index;
       }
-      ++kernel_index;
     }
 
     int pixel_value = src_img[thread_id];
 
     int rgb[3] = {0};
     for (int i = 2; i >= 0; --i) {
-      rgb[i] = int(sqrt((float)((sum_x[i] << 1) + (sum_y[i] << 1)))) / 8;
+      rgb[i] = int(sqrt((float)((sum_x[i] * sum_x[i]) + (sum_y[i] * sum_y[i])))) / 8;
+//       rgb[i] = abs(abs(int(sum_x[i])) + abs(int(sum_y[i]))) / 8;
       rgb[i] += (pixel_value & 255);
       rgb[i] = rgb[i] < 0 ? 0 : (rgb[i] > 255 ? 255 : rgb[i]);
       pixel_value >>= 8;
