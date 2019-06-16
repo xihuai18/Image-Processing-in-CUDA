@@ -1,10 +1,14 @@
-﻿
+﻿// mainwindow头函数
+// 声明mainwindow类及类内变量
+// 声明CUDA内定义的、需要在QT代码中调用的函数
 
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
 #include <QMainWindow>
 
+// cuda中定义的函数，分别为cut操作(GPU)、cut操作(CPU)、锐化、模糊、风格化、直方图均衡
+// 具体参数意义及实现详见.cu文件
 extern "C"
 int* getCutMask(int *src_img, int *mask_img, int img_height, int img_width);
 extern "C"
@@ -29,6 +33,7 @@ namespace Ui {
 class MainWindow;
 }
 
+// 主窗口类定义：
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -40,21 +45,25 @@ public:
 private:
     Ui::MainWindow *ui;
     QPixmap pix;    // 画板
+    // 笔触参数
     QPoint lastPoint;
     QPoint endPoint;
-    QColor penColor;
+    QColor penColor;    //笔触颜色
+    int penWidth;       //笔触宽度
+    bool isDrawing;   //标志是否正在绘图
 
+    // 图片、画布、数组变量保存
     QImage input_img;  // 原图原版
     QPixmap input_pix; //原图缩放版
     QPixmap seed_pix;   // 种子图
     QPixmap result_pix; // 结果图
     QSize originSize;   // 原大小
-    int penWidth;
-    bool isDrawing;   //标志是否正在绘图
     int *input_array = NULL;    // 原图int*
     int *mask_array = NULL;     // 遮罩int*
-    int draw_method;
-    bool isGPU = true;
+
+    // 其它标识
+    int draw_method;    // 渲染区域：0：全图；1：前景；2：背景；3：笔触覆盖
+    bool isGPU = true;  // 是否用GPU进行Cut操作
 
 protected:
     void paintEvent(QPaintEvent *);

@@ -1,4 +1,6 @@
-﻿#include "mainwindow.h"
+﻿// 主函数
+// 打开应用主窗口，开始绘制
+#include "mainwindow.h"
 #include <QApplication>
 
 

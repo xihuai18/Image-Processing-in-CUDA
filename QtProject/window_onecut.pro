@@ -48,7 +48,7 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 # Define output directories
-DESTDIR = ../bin
+DESTDIR = ./bin
 CUDA_OBJECTS_DIR = OBJECTS_DIR/../cuda
 
 # This makes the .cu files appear in your project
