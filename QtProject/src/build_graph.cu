@@ -1,4 +1,12 @@
-﻿// #include <cuda_runtime.h>
+﻿/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 01:05:53
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 01:07:15
+ * @file description:
+    build graph and perform push-relabel   
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -271,7 +279,6 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
 int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
              int color_bin_num) {
   int img_size = img_height * img_width;
-  // int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
   int max_height = (img_size + color_bin_num + 2) * 2;
 
   // initialize data for maxflow
@@ -346,7 +353,6 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
         color_bin_num);
     kernel_pixel_pull<<<grid_pixel, block_pixel>>>(
         d_edges, d_pull_pixel, d_pixel_flow, img_size, img_width, img_height);
-    // CHECK(cudaDeviceSynchronize());
     cudaMemcpy(h_finished, d_finished, sizeof(bool), cudaMemcpyDeviceToHost);
   } while (!(*h_finished));
 
@@ -487,7 +493,6 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
   pre[S] = S;
   gap[0] = n;
   while (d[S] <= n) {
-    // printf("%d ", p);
     for (i = cur[p]; i >= 0; i = edges[i].lh) {   // push
       if (d[p] == d[edges[i].to] + 1 && edges[i].f < edges[i].c) {
         cur[p] = i;
@@ -523,12 +528,6 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
       p = S;
     }
   }
-  // printf("serial maxflow ans=%lld\n", ans);
-  // for (i = last_edge[S]; i >= 0; i = edges[i].lh) {
-  //   if (edges[i].f > 0) {
-  //     printf("%d %d %d\n", i, edges[i].f, edges[i].c);
-  //   }
-  // }
   int *queue = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int *height = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int head = 0, tail = 0;

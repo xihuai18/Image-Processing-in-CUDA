@@ -1,5 +1,15 @@
+/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 00:47:01
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 00:49:03
+ * @file description:
+    functions for push-relabel algorithm, including push, pull, relabel and the function to segment the image
+ */
+
 #include "onecut_kernel.h"
 
+// pixel-push->pull_pixel,bin
 __global__ void kernel_pixel_push(unsigned int* res_pixel,
                                   unsigned long long* bin_flow,
                                   unsigned int* pixel_flow,
@@ -7,7 +17,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
                                   int* bin_height, int img_size, int col,
                                   int row, int tile_size, int tile_col,
                                   int tile_row, int bin_num) {
-  // pixel-push->pull_pixel,bin
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, col) + img_x;
@@ -78,8 +87,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
 
-    // printf("%d %d\n", img_idx, tmp_idx);
-    // //printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
@@ -108,7 +115,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 3];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d %0.2f %0.2f\n", img_idx, tmp_idx, tmp_res, max_flow_push);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -123,7 +129,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 4];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -138,7 +143,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 5];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -151,7 +155,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
   }
 
   // bin-pull->pixel
-  // atomicCAS();
   if (img_x < col && img_y < row) {
     // bin
     int bin_idx = res_pixel[img_idx * RES_UNIT_SIZE + 6];
@@ -285,7 +288,6 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
     }
     // pixel -> bin
     if (res_pixel[7] > 0) {
-      // min_height = min(min_height, height[tile_size + res_pixel[6]]);
       min_height = min(min_height, bin_height[res_pixel[6]]);
     }
     int cur_height = height[tile_pid];
