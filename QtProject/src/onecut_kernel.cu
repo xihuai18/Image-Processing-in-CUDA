@@ -4,7 +4,8 @@
  * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
  * @Last Modified time: 2019-06-17 00:49:03
  * @file description:
-    functions for push-relabel algorithm, including push, pull, relabel and the function to segment the image
+    functions for push-relabel algorithm, including push, pull, relabel and the
+ function to segment the image
  */
 
 #include "onecut_kernel.h"

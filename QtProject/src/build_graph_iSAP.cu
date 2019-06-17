@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <vector>
 #include "build_graph.h"
-#include "onecut_kernel.h"
 #include "common.h"
+#include "onecut_kernel.h"
 
 __device__ float sigma_square = 0;
 
@@ -130,10 +130,8 @@ __device__ int getColorBinIdx(int pixel_value, int color_bin_size) {
 
 __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
                              int img_width, int img_height, int color_bin_size,
-                             int *bin_idx,
-                             const int *__restrict__ src_img,
+                             int *bin_idx, const int *__restrict__ src_img,
                              const int *__restrict__ mask_img) {
-
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
   int thread_id = block_id * blockDim.x + threadIdx.x;
 
@@ -195,12 +193,11 @@ __global__ void init(unsigned int *res_pixel, unsigned int *pixel_flow,
   }
 }
 
-__global__ void updateBinIdx(int img_height, int img_width,
-                             unsigned int *edges, 
+__global__ void updateBinIdx(int img_height, int img_width, unsigned int *edges,
                              const int *__restrict__ bin_idx) {
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
   int thread_id = block_id * blockDim.x + threadIdx.x;
-  
+
   int img_size = img_height * img_width;
   int edges_width = 6 + 2 + 2;
 
@@ -210,7 +207,8 @@ __global__ void updateBinIdx(int img_height, int img_width,
   }
 }
 
-void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, int *mask) {
+void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num,
+                   int *mask) {
   // build graph
   int n = img_size + bin_num + 2;
   int S = img_size + bin_num;
@@ -220,38 +218,39 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
     int lh, from, to;
     int f, c;
     Edge() {}
-    Edge(int lh, int from, int to, int f, int c): lh(lh), from(from), to(to), f(f), c(c) {}
+    Edge(int lh, int from, int to, int f, int c)
+        : lh(lh), from(from), to(to), f(f), c(c) {}
   };
   std::vector<Edge> edges;
   std::vector<int> last_edge(n + 2, -1);
   for (int i = 0; i < img_size; i++) {
     unsigned *res_pixel = res + i * RES_UNIT_SIZE;
     int x = i / col, y = i % col;
-    if (x > 0 && res_pixel[2] > 0) {   // up-down
+    if (x > 0 && res_pixel[2] > 0) {  // up-down
       edges.push_back(Edge(last_edge[i], i, i - col, 0, res_pixel[2]));
       last_edge[i] = (int)edges.size() - 1;
       edges.push_back(Edge(last_edge[i - col], i - col, i, 0, res_pixel[2]));
       last_edge[i - col] = (int)edges.size() - 1;
     }
-    if (y > 0 && res_pixel[4] > 0) { // left-right
+    if (y > 0 && res_pixel[4] > 0) {  // left-right
       edges.push_back(Edge(last_edge[i], i, i - 1, 0, res_pixel[4]));
       last_edge[i] = (int)edges.size() - 1;
       edges.push_back(Edge(last_edge[i - 1], i - 1, i, 0, res_pixel[4]));
       last_edge[i - 1] = (int)edges.size() - 1;
     }
-    if (res_pixel[8] > 0) { // S-pixel
+    if (res_pixel[8] > 0) {  // S-pixel
       edges.push_back(Edge(last_edge[S], S, i, 0, res_pixel[8]));
       last_edge[S] = (int)edges.size() - 1;
       edges.push_back(Edge(last_edge[i], i, S, 0, res_pixel[8]));
       last_edge[i] = (int)edges.size() - 1;
     }
-    if (res_pixel[1] > 0) { // pixel-T
+    if (res_pixel[1] > 0) {  // pixel-T
       edges.push_back(Edge(last_edge[i], i, T, 0, res_pixel[1]));
       last_edge[i] = (int)edges.size() - 1;
       edges.push_back(Edge(last_edge[T], T, i, 0, res_pixel[1]));
       last_edge[T] = (int)edges.size() - 1;
     }
-    if (res_pixel[9] > 0) { // pixel-bin
+    if (res_pixel[9] > 0) {  // pixel-bin
       int bid = res_pixel[6] + img_size;
       edges.push_back(Edge(last_edge[i], i, bid, 0, res_pixel[9]));
       last_edge[i] = (int)edges.size() - 1;
@@ -267,7 +266,7 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
   gap[0] = n;
   while (d[S] <= n) {
     // printf("%d ", p);
-    for (i = cur[p]; i >= 0; i = edges[i].lh) {   // push
+    for (i = cur[p]; i >= 0; i = edges[i].lh) {  // push
       if (d[p] == d[edges[i].to] + 1 && edges[i].f < edges[i].c) {
         cur[p] = i;
         k = edges[i].to;
@@ -287,7 +286,7 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
       gap[k + 1]++;
       p = pre[p];
     }
-    if (p == T) { // find an augmented path
+    if (p == T) {  // find an augmented path
       k = edges[cur[S]].c - edges[cur[S]].f;
       for (i = pre[p]; i != S; i = pre[i])
         if (edges[cur[i]].c - edges[cur[i]].f < k)
@@ -336,8 +335,8 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
   }
 }
 
-unsigned int *buildGraph(int *src_img, int *mask_img, 
-                         int img_height, int img_width, int *ptr_color_bin_num) {
+unsigned int *buildGraph(int *src_img, int *mask_img, int img_height,
+                         int img_width, int *ptr_color_bin_num) {
   int img_size = img_height * img_width;
   int img_num_bytes = sizeof(unsigned int) * img_size;
 
@@ -357,7 +356,7 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
 
   int *d_bin_idx = NULL;
   int bin_num_bytes = sizeof(int) * (*ptr_color_bin_num);
-  cudaMalloc((void**)&d_bin_idx, bin_num_bytes);
+  cudaMalloc((void **)&d_bin_idx, bin_num_bytes);
   cudaMemset(d_bin_idx, 0, bin_num_bytes);
 
   dim3 block0(1024, 1, 1), grid0(1, 1, 1);
@@ -367,12 +366,12 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
     grid0.x = updiv(img_size, 1024);
   }
   computeEdges<<<grid0, block0>>>(lambda, beta, d_edges, img_width, img_height,
-                                  color_bin_size, d_bin_idx, d_src_img, 
+                                  color_bin_size, d_bin_idx, d_src_img,
                                   d_mask_img);
 
-  int *h_bin_idx = (int*)malloc(bin_num_bytes);
+  int *h_bin_idx = (int *)malloc(bin_num_bytes);
   cudaMemcpy(h_bin_idx, d_bin_idx, bin_num_bytes, cudaMemcpyDeviceToHost);
-  
+
   // compress the number of bins
   int idx = 0;
   for (int i = 0; i < (*ptr_color_bin_num); ++i) {
@@ -387,7 +386,7 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
   CHECK(cudaDeviceSynchronize());
 
   free(h_bin_idx);
-    
+
   cudaFree(d_bin_idx);
   cudaFree(d_src_img);
   cudaFree(d_mask_img);
@@ -395,9 +394,8 @@ unsigned int *buildGraph(int *src_img, int *mask_img,
   return d_edges;
 }
 
-int *maxFlow(int img_height, int img_width, 
-             unsigned int *d_edges, int color_bin_num) {
-
+int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
+             int color_bin_num) {
   int img_size = img_height * img_width;
   int edges_num_bytes = sizeof(int) * img_size * (6 + 2 + 2);
 
@@ -414,9 +412,9 @@ int *maxFlow(int img_height, int img_width,
 
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   int color_bin_num = pow(256 / color_bin_size, 3);
-  unsigned int *d_edges = buildGraph(src_img, mask_img, 
-                                     img_height, img_width, &color_bin_num);
-  
+  unsigned int *d_edges =
+      buildGraph(src_img, mask_img, img_height, img_width, &color_bin_num);
+
   int *segment = maxFlow(img_height, img_width, d_edges, color_bin_num);
 
   cudaFree(d_edges);

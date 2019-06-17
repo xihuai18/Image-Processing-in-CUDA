@@ -7,7 +7,6 @@
     functions for push-relabel algorithm, including push, pull, relabel and the function to segment the image
 */
 
-
 #ifndef __ONECUT__KERNEL__
 #define __ONECUT__KERNEL__ value
 
