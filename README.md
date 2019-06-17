@@ -15,4 +15,4 @@ Implementation of image processing methods in CUDA
 
 **Demo**
 
-<video src="assets/demo.gif"></video>
+![image](assets/demo.gif)
