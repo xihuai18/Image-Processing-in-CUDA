@@ -1,5 +1,11 @@
 ﻿/*
  * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 14:22:21
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 14:23:36
+ */
+/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
  * @Date: 2019-06-17 00:57:53
  * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
  * @Last Modified time: 2019-06-17 01:02:37
@@ -18,11 +24,11 @@ rgb_img: image in RGB model
 
 // count the histgram
 __global__ void CLAHEPre(int *hsi_img, int *g_frq, int height, int width)
-// the 'tile' size is the same with the block size, 1 block for 9 tile
+// the 'tile' size is the same with the block size, 1 block for 9 tiles
 {
   __shared__ int frq[9 * 256 + 256];
   int lt_x = __umul24(blockIdx.x, blockDim.x * 3) + threadIdx.x,
-  lt_y = __umul24(blockIdx.y, blockDim.y * 3) + threadIdx.y;
+      lt_y = __umul24(blockIdx.y, blockDim.y * 3) + threadIdx.y;
   int lt_idx = __umul24(lt_y, width) + lt_x;
   int thread_idx = threadIdx.x + threadIdx.y * blockDim.x;
   int per_thread = 9;
@@ -36,9 +42,9 @@ __global__ void CLAHEPre(int *hsi_img, int *g_frq, int height, int width)
       frq[9 * 256 + i] = 0;
     }
   }
-  
+
   __syncthreads();
-  
+
   for (int i = 0; i < 3; ++i) {
     int tmp_x = lt_x;
     int tmp_y = lt_y + i * TILESIZE;
@@ -58,28 +64,28 @@ __global__ void CLAHEPre(int *hsi_img, int *g_frq, int height, int width)
     }
   }
   __syncthreads();
-  
+
   for (int i = 0; i < 9; ++i) {
     for (int stride = 1; stride < 256; stride <<= 1) {
       __syncthreads();
       int val;
       if (thread_idx < 256)
-      val = (thread_idx > stride) ? frq[i * 256 + thread_idx - stride] : 0;
+        val = (thread_idx > stride) ? frq[i * 256 + thread_idx - stride] : 0;
       __syncthreads();
       if (thread_idx < 256) frq[i * 256 + thread_idx] += val;
     }
   }
-  
+
   __syncthreads();
-  
+
   if (thread_idx < 256) {
     for (int i = 0; i < 9; ++i) {
       atomicAdd(&frq[9 * 256 + thread_idx], frq[i * 256 + thread_idx]);
     }
   }
-  
+
   __syncthreads();
-  
+
   if (thread_idx < 256) {
     atomicAdd(&g_frq[thread_idx], frq[9 * 256 + thread_idx]);
   }
@@ -89,39 +95,40 @@ __global__ void CLAHEPre(int *hsi_img, int *g_frq, int height, int width)
 __global__ void CLAHEAft(int *hsi_img, int *g_frq, int height, int width) {
   int lt_x = __umul24(blockIdx.x, blockDim.x * 3) + threadIdx.x,
       lt_y = __umul24(blockIdx.y, blockDim.y * 3) + threadIdx.y;
-      int lt_idx = __umul24(lt_y, width) + lt_x;
-      for (int i = 0; i < 3; ++i) {
-        int tmp_x = lt_x;
-        int tmp_y = lt_y + i * TILESIZE;
-        int tmp_idx = __umul24(tmp_y, width) + tmp_x;
-        if (tmp_x < width && tmp_y < height) {
-          int tmp =
+  int lt_idx = __umul24(lt_y, width) + lt_x;
+  for (int i = 0; i < 3; ++i) {
+    int tmp_x = lt_x;
+    int tmp_y = lt_y + i * TILESIZE;
+    int tmp_idx = __umul24(tmp_y, width) + tmp_x;
+    if (tmp_x < width && tmp_y < height) {
+      int tmp =
           (1.0 * g_frq[(hsi_img[tmp_idx] & 0x0000FF)] / (height * width)) * 255;
-          hsi_img[tmp_idx] =
+      hsi_img[tmp_idx] =
           (hsi_img[tmp_idx] & 0xFFFF00) + ((255 < tmp) ? 255 : tmp);
-        }
-        tmp_x = lt_x + TILESIZE;
-        tmp_idx = __umul24(tmp_y, width) + tmp_x;
-        if (tmp_x < width && tmp_y < height) {
-          int tmp =
-          (1.0 * g_frq[(hsi_img[tmp_idx] & 0x0000FF)] / (height * width)) * 255;
-          hsi_img[tmp_idx] =
-          (hsi_img[tmp_idx] & 0xFFFF00) + ((255 < tmp) ? 255 : tmp);
-        }
-        tmp_x = lt_x + TILESIZE * 2;
-        tmp_idx = __umul24(tmp_y, width) + tmp_x;
-        if (tmp_x < width && tmp_y < height) {
-          int tmp =
-          (1.0 * g_frq[(hsi_img[tmp_idx] & 0x0000FF)] / (height * width)) * 255;
-          hsi_img[tmp_idx] =
-          (hsi_img[tmp_idx] & 0xFFFF00) + ((255 < tmp) ? 255 : tmp);
-        }
-      }
     }
-    bool compare(int *one, int *two, int img_height, int img_width) {
-      for (int i = 0; i < img_height * img_width; ++i) {
-        if (one[i] & 0xFFFF00 != two[i] & 0xFFFF00) {
-          return false;
+    tmp_x = lt_x + TILESIZE;
+    tmp_idx = __umul24(tmp_y, width) + tmp_x;
+    if (tmp_x < width && tmp_y < height) {
+      int tmp =
+          (1.0 * g_frq[(hsi_img[tmp_idx] & 0x0000FF)] / (height * width)) * 255;
+      hsi_img[tmp_idx] =
+          (hsi_img[tmp_idx] & 0xFFFF00) + ((255 < tmp) ? 255 : tmp);
+    }
+    tmp_x = lt_x + TILESIZE * 2;
+    tmp_idx = __umul24(tmp_y, width) + tmp_x;
+    if (tmp_x < width && tmp_y < height) {
+      int tmp =
+          (1.0 * g_frq[(hsi_img[tmp_idx] & 0x0000FF)] / (height * width)) * 255;
+      hsi_img[tmp_idx] =
+          (hsi_img[tmp_idx] & 0xFFFF00) + ((255 < tmp) ? 255 : tmp);
+    }
+  }
+}
+
+bool compare(int *one, int *two, int img_height, int img_width) {
+  for (int i = 0; i < img_height * img_width; ++i) {
+    if (one[i] & 0xFFFF00 != two[i] & 0xFFFF00) {
+      return false;
     }
   }
   return true;
@@ -149,7 +156,7 @@ int *imgCLAHE_Global(int *src_img, int img_height, int img_width) {
 
   CLAHEPre<<<grid2, block>>>(d_hsi_img, d_g_frq, img_height, img_width);
   CLAHEAft<<<grid2, block>>>(d_hsi_img, d_g_frq, img_height, img_width);
-  
+
   HSI2RGB<<<grid1, block>>>(d_hsi_img, d_rgb_img, img_height, img_width);
   cudaMemcpy(ret_img, d_rgb_img, img_height * img_width * sizeof(int),
              cudaMemcpyDeviceToHost);
