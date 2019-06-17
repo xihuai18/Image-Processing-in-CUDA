@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @Author: X Wang, Y xiao, Ch Yang, G Ye
  * @Date: 2019-06-17 00:47:01
  * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
@@ -195,7 +195,7 @@ __global__ void kernel_pixel_pull(unsigned int* res_pixel,
   Each thread handles one pixel. For each pixel, add the flow cached in
   pull_pixel to pixel_flow and clear it.
   */
-  l
+
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, col) + img_x;
