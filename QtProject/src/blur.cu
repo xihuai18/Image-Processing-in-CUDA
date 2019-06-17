@@ -1,15 +1,27 @@
-﻿#include <math.h>
+﻿/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 01:03:01
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 10:51:30
+ * @file description:
+    blur image using gauss kernel
+*/
+
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "blur.h"
 #include "common.h"
 #define PI 3.141593
 
-// the kernel of gauss using bluring img
+// The kernel of gauss using bluring img;
+// And the size of gauss kernel is in [1, 8];
 __constant__ float gauss_kernel[2500];
 
 
-// 图像模糊处理，每个线程负责一个像素点，S为高斯核大小
+/* 
+  图像模糊处理，每个线程负责一个像素点，S为高斯核大小
+*/
 __global__ void kernel_blur(int S, int img_height, int img_width, int *res_img,
                             const int *__restrict__ src_img) {
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
@@ -51,7 +63,11 @@ __global__ void kernel_blur(int S, int img_height, int img_width, int *res_img,
   }
 }
 
-// 使用高斯核进行图像模糊处理
+/*
+  使用高斯核进行图像模糊处理
+  Return::
+    @Int array: the result image pixel array after blur
+*/
 int* imgBlur(int *src_img, int img_height, int img_width) {
   int S = 2;
   calculateGaussKernel(S);
@@ -82,7 +98,9 @@ int* imgBlur(int *src_img, int img_height, int img_width) {
   return h_res_img;
 }
 
-// 计算高斯核，S为高斯核大小
+/*
+  计算高斯核，S为高斯核大小
+*/
 void calculateGaussKernel(int S) {
   int n = 6 * S + 1;
   int size = sizeof(float) * n * n;

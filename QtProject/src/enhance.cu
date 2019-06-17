@@ -1,10 +1,20 @@
-﻿#include "common.h"
+﻿/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 00:56:33
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 00:57:38
+ * @file description:
+    Contrast Local Adaptive Histgram Enhancement
+ */
+#include "common.h"
 #include "enhance.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-
+/*
+Contrast Local Adaptive Histgram Enhancement 
+*/
 __global__ void CLAHE(int * hsi_img, int height, int width)
 // the 'tile' size is the same with the block size, 1 block for 9 tile
 {
@@ -93,38 +103,19 @@ __global__ void CLAHE(int * hsi_img, int height, int width)
         int tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
             hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*frq[(i*3+0)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255;
-            // if ((1.0*frq[(i*3+0)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
-            //     printf("==>ERROR!\n");
-            // }
         }
         tmp_x = lt_x + TILESIZE;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
             hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255;
-            // if ((1.0*frq[(i*3+1)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
-            //     printf("==>ERROR!\n");
-            // }
         }
         tmp_x = lt_x + TILESIZE*2;
         tmp_idx = __umul24(tmp_y, width) + tmp_x;
         if(tmp_x < width && tmp_y < height) {
             hsi_img[tmp_idx] = (hsi_img[tmp_idx] & 0xFFFF00) + (1.0*frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255;
-            // if ((1.0*frq[(i*3+2)*256+(hsi_img[tmp_idx]&0x0000FF)]/(TILESIZE*TILESIZE))*255 > 255) {
-                // printf("==>ERROR!\n");
-            // }
         }
     }
 }
-
-// bool compare(int *one, int *two, int img_height, int img_width) {
-//     for (int i = 0; i < img_height*img_width; ++i)
-//     {
-//         if(one[i]&0xFFFF00 != two[i]&0xFFFF00) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
 
 int* imgCLAHE(int *src_img, int img_height, int img_width)
 {
@@ -141,22 +132,12 @@ int* imgCLAHE(int *src_img, int img_height, int img_width)
     dim3 grid1(updiv(img_width, TILESIZE), updiv(img_height, TILESIZE));
     dim3 grid2(updiv(img_width, TILESIZE*3), updiv(img_height, TILESIZE*3));
 
-    // cudaChannelFormatDesc desc1 = cudaCreateChannelDesc<int> ();
-    // cudaChannelFormatDesc desc2 = cudaCreateChannelDesc<int> ();
-    // cudaBindTexture2D(0, tex1, d_rgb_img, desc1, img_width, img_height, img_width*sizeof(int));
-    // cudaBindTexture2D(0, tex2, d_hsi_img, desc2, img_width, img_height, img_width*sizeof(int));
-
     RGB2HSI<<<grid1, block>>>(d_rgb_img, d_hsi_img, img_height, img_width);
     CLAHE<<<grid2, block>>>(d_hsi_img, img_height, img_width);
     HSI2RGB<<<grid1, block>>>(d_hsi_img, d_rgb_img, img_height, img_width);
-    // if(!compare(h_img_one, h_img_two, img_height, img_width)) {
-    //     printf("===> ERROR!HSI matrix changed!\n");
-    // }
 
     cudaMemcpy(ret_img, d_rgb_img, img_height*img_width*sizeof(int), cudaMemcpyDeviceToHost);
 
-    // cudaUnbindTexture(tex1);
-    // cudaUnbindTexture(tex2);
     cudaFree(d_rgb_img);
     cudaFree(d_hsi_img);
     free(h_img_one);

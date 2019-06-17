@@ -1,9 +1,15 @@
-﻿#include "common.h"
-#include "enhance.h"
+﻿/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 01:03:01
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 01:05:29
+ * @file description:
+    chang image between RGB and HSV
+ */
 #include <stdio.h>
 #include <stdlib.h>
-
-// int updiv(int x, int y) { return (x + y - 1) / y; }
+#include "common.h"
+#include "enhance.h"
 
 __global__ void RGB2HSI(int *rgb_img, int *hsi_img, int height, int width) {
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
@@ -20,17 +26,9 @@ __global__ void RGB2HSI(int *rgb_img, int *hsi_img, int height, int width) {
     float I = (R + G + B) / (3.0 * 255);
     hsi_img[img_idx] =
         (int((H * 255)) << 16) + (int((S * 255)) << 8) + int((I * 255));
-//    if (img_idx == 0){
-//        printf("RGB: %d %d %d; HSI: %f %f %f; %d\n", R, G, B, H, S, I, hsi_img[img_idx]);
-//        printf("A %d; %f; %f %f\n", ((R - G + R - B) / 2), powf( G-R, 2),sqrtf(powf(R - G, 2) + (R - B) * (G - B)), theta);
-//    }
   }
-//  __syncthreads();
-//  int thread_idx = threadIdx.x + threadIdx.y * blockDim.x;
-//  if ( 0 == thread_idx){
-//      printf("rgb2hsi: %d %d \n", rgb_img[thread_idx], hsi_img[thread_idx]);
-//  }
 }
+
 __global__ void HSI2RGB(int *hsi_img, int *rgb_img, int height, int width) {
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
@@ -40,38 +38,24 @@ __global__ void HSI2RGB(int *hsi_img, int *rgb_img, int height, int width) {
           S = ((hsi_img[img_idx] >> 8) & 0x00FF) / 255.0,
           I = (hsi_img[img_idx] & 0x0000FF) / 255.0;
     int R, G, B;
-//    if (img_idx == 0){
-//        printf("hsip2rgb the hsi: %f %f %f\n", H, S,I);
-//    }
     if (H >= 0 && H < 2 * CUDART_PI_F / 3) {
       B = I * (1 - S) * 255;
       R = I * (1 + S * cosf(H) / cosf(CUDART_PI_F / 3 - H)) * 255;
       G = 3 * I * 255 - (R + B);
-      // printf("1 %d %d %d %f %f %f\n", R, G, B, H, S, I);
     } else if (H >= 2 * CUDART_PI_F / 3 && H < 4 * CUDART_PI_F / 3) {
       H -= CUDART_PI_F / 3 * 2;
       R = I * (1 - S) * 255;
       G = I * (1 + S * cosf(H) / cosf(CUDART_PI_F / 3 - H)) * 255;
       B = 3 * I * 255 - (R + G);
-      // printf("2 %d %d %d %f %f %f\n", R, G, B, H, S, I);
     } else if (H >= 4 * CUDART_PI_F / 3 && H < 2 * CUDART_PI_F) {
       H -= CUDART_PI_F / 3 * 4;
       G = I * (1 - S) * 255;
       B = I * (1 + S * cosf(H) / cosf(CUDART_PI_F / 3 - H)) * 255;
       R = 3 * I * 255 - (G + B);
-      // printf("3 %d %d %d %f %f %f\n", R, G, B, H, S, I);
     }
     R = min(R, 255);
     G = min(G, 255);
     B = min(B, 255);
     rgb_img[img_idx] = (R << 16) + (G << 8) + B;
-//    if (img_idx == 0){
-//        printf("hsip2rgb the rgb: %d %d %d\n", R, G,B);
-//    }
   }
-//  __syncthreads();
-//  int thread_idx = threadIdx.x + threadIdx.y * blockDim.x;
-//  if ( 0 == thread_idx){
-//      printf("hsi2rgb: %d %d \n", hsi_img[thread_idx], rgb_img[thread_idx]);
-//  }
 }

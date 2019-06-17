@@ -11,7 +11,6 @@ __global__ void kernel_blur(int S,
                             const int *__restrict__ src_img);
 extern "C"
 int* imgBlur(int *src_img, int img_height, int img_width);
-
 void calculateGaussKernel(int S);
 
 #endif // BLUR_H
