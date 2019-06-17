@@ -1,4 +1,13 @@
-﻿#include <math.h>
+﻿/*
+ * @Author: X Wang, Y xiao, Ch Yang, G Ye
+ * @Date: 2019-06-17 01:03:01
+ * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
+ * @Last Modified time: 2019-06-17 10:52:30
+ * @file description:
+    sharpen image using sobel kernel
+*/
+
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "sharpen.h"
@@ -8,7 +17,6 @@
 __constant__ int sobel_kernel_x[9];
 __constant__ int sobel_kernel_y[9];
 
-// 使用sobel算子的图像锐化处理，每个线程负责一个像素点
 // 使用sobel算子的图像锐化处理，每个线程负责一个像素点
 __global__ void kernel_sharpen(int img_height, int img_width, int *res_img,
                                const int *__restrict__ src_img) {
@@ -51,7 +59,6 @@ __global__ void kernel_sharpen(int img_height, int img_width, int *res_img,
     int rgb[3] = {0};
     for (int i = 2; i >= 0; --i) {
       rgb[i] = int(sqrt((float)((sum_x[i] * sum_x[i]) + (sum_y[i] * sum_y[i])))) / 8;
-//       rgb[i] = abs(abs(int(sum_x[i])) + abs(int(sum_y[i]))) / 8;
       rgb[i] += (pixel_value & 255);
       rgb[i] = rgb[i] < 0 ? 0 : (rgb[i] > 255 ? 255 : rgb[i]);
       pixel_value >>= 8;
@@ -61,7 +68,11 @@ __global__ void kernel_sharpen(int img_height, int img_width, int *res_img,
   }
 }
 
-// 使用sobel算子进行图像的锐化
+/*
+  使用sobel算子进行图像的锐化
+  Return::
+    @Int array: the result image pixel array after sharpen
+*/
 int* imgSharpen(int *src_img, int img_height, int img_width){
   int sobel_x[9] = {-1, 0, 1, -2, 0, 2, -1, 0, 1};
   int sobel_y[9] = {-1, -2, -1, 0, 0, 0, 1, 2, 1};

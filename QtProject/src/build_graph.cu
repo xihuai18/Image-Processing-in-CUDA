@@ -17,7 +17,9 @@
 
 __device__ float sigma_square = 0;
 
-
+/*
+  convert to rgb using pixel_value(Int)
+*/
 __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b) {
   *b = pixel_value & 255;
   pixel_value >>= 8;
@@ -26,6 +28,9 @@ __device__ void convertToRGB(int pixel_value, int *r, int *g, int *b) {
   *r = pixel_value & 255;
 }
 
+/*
+  compute the euclidean distance of p and q pixel
+*/
 __device__ int Di(int pixel_p, int pixel_q) {
   int p_r, p_g, p_b;
   int q_r, q_g, q_b;
@@ -35,6 +40,9 @@ __device__ int Di(int pixel_p, int pixel_q) {
          (p_b - q_b) * (p_b - q_b);
 }
 
+/*
+  the unfold warp reduce function
+*/
 __device__ void warpReduce(volatile int *sigma_sum, int tid, int block_dim_x) {
   sigma_sum[tid] += tid + 32 >= block_dim_x ? 0 : sigma_sum[tid + 32];
   sigma_sum[tid] += tid + 16 >= block_dim_x ? 0 : sigma_sum[tid + 16];
@@ -44,11 +52,17 @@ __device__ void warpReduce(volatile int *sigma_sum, int tid, int block_dim_x) {
   sigma_sum[tid] += tid + 1 >= block_dim_x ? 0 : sigma_sum[tid + 1];
 }
 
+/*
+  compute the sigma square sum before building graph;
+  each thread computes two pixels' euclidean distance of 4-neighbors
+*/
 __global__ void computeSigmaSquareSum(int img_width, int img_height,
                                       const int *__restrict__ src_img) {
   extern __shared__ int sigma_sum[];
 
+  // the id of thread in this block
   int tid = threadIdx.x;
+
   int block_id = blockIdx.y * gridDim.x + blockIdx.x;
   int thread_id = block_id * blockDim.x + threadIdx.x;
 
@@ -82,6 +96,7 @@ __global__ void computeSigmaSquareSum(int img_width, int img_height,
   }
 
   __syncthreads();
+  // use reduction for suming up the sigma_sum
   for (unsigned int s = blockDim.x / 2; s > 32; s >>= 1) {
     if (tid < s) {
       sigma_sum[tid] += sigma_sum[tid + s];
@@ -93,6 +108,7 @@ __global__ void computeSigmaSquareSum(int img_width, int img_height,
     warpReduce(sigma_sum, tid, blockDim.x);
   }
 
+  // the first thread of each block write result into global variate
   if (tid == 0) {
     atomicAdd(&sigma_square, sigma_sum[0]);
   }
@@ -126,6 +142,9 @@ __device__ float gaussian(int di, float lambda, float sigma_square) {
   return lambda * exp(-di / (2 * sigma_square));
 }
 
+/*
+  compute the bin index of given pixel_value
+*/
 __device__ int getColorBinIdx(int pixel_value, int color_bin_size) {
   int r, g, b;
   convertToRGB(pixel_value, &r, &g, &b);
@@ -135,6 +154,10 @@ __device__ int getColorBinIdx(int pixel_value, int color_bin_size) {
          (g / color_bin_size) * per_bin_channel + (b / color_bin_size);
 }
 
+/*
+  compute the edges of given src_img and mask_img;
+  each thread compute for one pixel point;
+*/
 __global__ void computeEdges(float lambda, float beta, unsigned int *edges,
                              int img_width, int img_height, int color_bin_size,
                              int *bin_idx,
@@ -201,6 +224,9 @@ __global__ void init(unsigned int *res_pixel, unsigned int *pixel_flow,
   }
 }
 
+/*
+  update the bin index after compressing bins
+*/
 __global__ void updateBinIdx(int img_height, int img_width,
                              unsigned int *edges, 
                              const int *__restrict__ bin_idx) {
@@ -216,6 +242,11 @@ __global__ void updateBinIdx(int img_height, int img_width,
   }
 }
 
+/*
+  the host function of build graph;
+  Return:: 
+    @unsigned int array: the edges of the graph
+*/
 unsigned int *buildGraph(int *src_img, int *mask_img, 
                          int img_height, int img_width, int *ptr_color_bin_num) {
   int img_size = img_height * img_width;
@@ -396,6 +427,12 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
   return h_pixel_height;
 }
 
+/*
+  the host function of getCutMask using onecut;
+  Return::
+    @Int array: the result of segment;
+                0 for foreground and 255 for background
+*/
 int *getCutMask(int *src_img, int *mask_img, int img_height, int img_width) {
   int color_bin_num = pow(256 / color_bin_size, 3);
   unsigned int *d_edges =
@@ -437,6 +474,7 @@ int *getCutMask_iSAP(int *src_img, int *mask_img, int img_height, int img_width)
 
   return segment;
 }
+
 void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, int *mask) {
   // build graph
   int n = img_size + bin_num + 2;
