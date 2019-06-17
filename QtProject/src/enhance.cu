@@ -4,7 +4,7 @@
  * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
  * @Last Modified time: 2019-06-17 00:57:38
  * @file description:
-    Contrast Local Adaptive Histgram Enhancement
+    Contrast Local Adaptive Histogram Enhancement
  */
 #include "common.h"
 #include "enhance.h"
@@ -13,7 +13,7 @@
 
 
 /*
-Contrast Local Adaptive Histgram Enhancement 
+Contrast Local Adaptive Histogram Enhancement 
 */
 __global__ void CLAHE(int * hsi_img, int height, int width)
 // the 'tile' size is the same with the block size, 1 block for 9 tile

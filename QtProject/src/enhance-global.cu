@@ -3,14 +3,8 @@
  * @Date: 2019-06-17 14:22:21
  * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
  * @Last Modified time: 2019-06-17 14:23:36
- */
-/*
- * @Author: X Wang, Y xiao, Ch Yang, G Ye
- * @Date: 2019-06-17 00:57:53
- * @Last Modified by: X Wang, Y Xiao, Ch Yang, G Ye
- * @Last Modified time: 2019-06-17 01:02:37
  * @file description:
-    global histgram ehancement
+    global histogram enhancement
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +16,7 @@ hsi_img: image in HSV model
 rgb_img: image in RGB model
 */
 
-// count the histgram
+// count the histogram
 __global__ void CLAHEPre(int *hsi_img, int *g_frq, int height, int width)
 // the 'tile' size is the same with the block size, 1 block for 9 tiles
 {
