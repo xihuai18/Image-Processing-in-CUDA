@@ -7,15 +7,21 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
                                   int* bin_height, int img_size, int col,
                                   int row, int tile_size, int tile_col,
                                   int tile_row, int bin_num) {
-  // pixel-push->pull_pixel,bin
+  /*
+  Each thread handles one pixel. For each pixel, 
+  1. try pushing to source/sink/pixels/bin
+  2. try pulling from bin
+
+  Size of shared memory: 4 * tile_size * 10
+  */
+
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, col) + img_x;
 
-  // can use shared memory
   extern __shared__ unsigned int local_res_pixel[];
 
-  // the block size should be the size of the tile
+  // load res_pixel to shared memory
   int thread_idx = threadIdx.x + __umul24(blockDim.x, threadIdx.y);
   int tile_idx = threadIdx.x + 1 + __umul24(tile_col, threadIdx.y + 1);
   if (img_x < col && img_y < row) {
@@ -48,9 +54,9 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
 
   __syncthreads();
 
+  // push to source/sink/bin/pixels
   unsigned int max_flow_push = pixel_flow[img_idx], min_flow_push = 0, tmp_res;
   int tmp_idx;
-  // the thread in the img_block
   if (img_x < col && img_y < row) {
     // to the sink
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 1];
@@ -72,14 +78,12 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
       pixel_flow[img_idx] -= min_flow_push;
       atomicAdd(&bin_flow[bin_num], min_flow_push);
     }
-    // bin
+    // to the bin
     int bin_idx = local_res_pixel[tile_idx * RES_UNIT_SIZE + 6];
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 7];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
 
-    // printf("%d %d\n", img_idx, tmp_idx);
-    // //printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_res > 0 && max_flow_push > 0 &&
         pixel_height[img_idx] == bin_height[bin_idx] + 1) {
       (tmp_res < max_flow_push) ? min_flow_push = tmp_res : 0;
@@ -89,7 +93,7 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
       atomicAdd(&bin_flow[bin_idx], min_flow_push);
     }
 
-    // up down left right
+    // to pixels: up down left right
     tmp_idx = __umul24(img_y - 1, col) + img_x;
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 2];
     max_flow_push = pixel_flow[img_idx];
@@ -108,7 +112,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 3];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d %0.2f %0.2f\n", img_idx, tmp_idx, tmp_res, max_flow_push);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -123,7 +126,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 4];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -138,7 +140,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     tmp_res = local_res_pixel[tile_idx * RES_UNIT_SIZE + 5];
     max_flow_push = pixel_flow[img_idx];
     min_flow_push = max_flow_push;
-    // printf("%d %d\n", img_idx, tmp_idx);
     if (tmp_idx >= 0 && tmp_idx < img_size && tmp_res > 0 &&
         max_flow_push > 0 &&
         pixel_height[img_idx] == pixel_height[tmp_idx] + 1) {
@@ -150,10 +151,8 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
     }
   }
 
-  // bin-pull->pixel
-  // atomicCAS();
+  // pull from bin
   if (img_x < col && img_y < row) {
-    // bin
     int bin_idx = res_pixel[img_idx * RES_UNIT_SIZE + 6];
     unsigned int max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 9];
     unsigned long long bin_res_flow = 0;
@@ -176,26 +175,6 @@ __global__ void kernel_pixel_push(unsigned int* res_pixel,
       res_pixel[img_idx * RES_UNIT_SIZE + 9] -= flow_pull;
       res_pixel[img_idx * RES_UNIT_SIZE + 7] += flow_pull;
     }
-
-    // source
-    max_flow_pull = res_pixel[img_idx * RES_UNIT_SIZE + 8];
-    do {
-      bin_res_flow = bin_flow[bin_num];
-      if (max_flow_pull > 0 && bin_res_flow > 0 &&
-          bin_height[bin_num] == pixel_height[img_idx] + 1) {
-        flow_pull = max_flow_pull < bin_res_flow ? max_flow_pull : bin_res_flow;
-        new_bin_flow = bin_res_flow - flow_pull;
-      } else {
-        flow_pull = 0;
-        break;
-      }
-    } while (bin_res_flow !=
-             atomicCAS(&bin_flow[bin_num], bin_res_flow, new_bin_flow));
-    if (flow_pull > 0) {
-      pixel_flow[img_idx] += flow_pull;
-      res_pixel[img_idx * RES_UNIT_SIZE + 8] -= flow_pull;
-      res_pixel[img_idx * RES_UNIT_SIZE + 0] += flow_pull;
-    }
   }
 }
 
@@ -203,7 +182,11 @@ __global__ void kernel_pixel_pull(unsigned int* res_pixel,
                                   unsigned int* pull_pixel,
                                   unsigned int* pixel_flow, int img_size,
                                   int col, int row) {
-  // pixel<-pull-pull_pixel
+  /*
+  Each thread handles one pixel. For each pixel, add the flow cached in
+  pull_pixel to pixel_flow and clear it.
+  */
+  l
   int img_x = __umul24(blockIdx.x, blockDim.x) + threadIdx.x,
       img_y = __umul24(blockIdx.y, blockDim.y) + threadIdx.y;
   int img_idx = __umul24(img_y, col) + img_x;
@@ -221,21 +204,16 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
                                      int tile_col, int tile_row, int bin_num,
                                      bool* finished) {
   /*
-  Each threads handles one pixel. For each pixel with positive flow, find the
+  Each thread handles one pixel. For each pixel with positive flow, find the
   minimum height of potential pixels/bins (with positive residual), set its
   height to min_height + 1.
 
-  Size of shared memory: 4 * (tile_size + bin_num + 1)
-
-  NOTES FOR OPTIMIZATION:
-  1. swap the row & col of res may be better? (spacial locality)
-  2. consider texture
+  Size of shared memory: 4 * tile_size
   */
 
   int x = blockIdx.y * blockDim.y + threadIdx.y;
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
-  // int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
   int tile_pid = (threadIdx.y + 1) * tile_col + threadIdx.x + 1;
 
   // load pixel_height to shared memory
@@ -262,11 +240,11 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
   if (x < row && y < col && pixel_flow[pid] > 0) {
     int min_height = INF;
     unsigned int* res_pixel = res + pid * RES_UNIT_SIZE;
-    // pixel -> S
+    // pixel -> source
     if (res_pixel[0] > 0) {
       min_height = bin_height[bin_num];
     }
-    // pixel -> T
+    // pixel -> sink
     if (res_pixel[1] > 0) {
       min_height = 0;
     }
@@ -285,7 +263,6 @@ __global__ void kernel_pixel_relabel(unsigned int* res,
     }
     // pixel -> bin
     if (res_pixel[7] > 0) {
-      // min_height = min(min_height, height[tile_size + res_pixel[6]]);
       min_height = min(min_height, bin_height[res_pixel[6]]);
     }
     int cur_height = height[tile_pid];
@@ -309,9 +286,6 @@ __global__ void kernel_bin_relabel(unsigned int* res, unsigned int* pixel_flow,
   /*
   Each thread handles one pixel. For each pixel, relabel the bin connected
   to it, if the bin has positive flow and the pixel is pushable.
-
-  NOTES FOR OPTIMIZATION:
-  1. use reduction rather than atomic ops
   */
 
   int x = blockIdx.y * blockDim.y + threadIdx.y;
@@ -351,9 +325,13 @@ __global__ void kernel_bin_relabel_update(int* bin_height, int* new_bin_height,
   }
 }
 
-__global__ void kernel_check_gap(int* height_count, int* gap, int num) {
+__global__ void kernel_check_gap(int* height_count, int* gap, int source_height) {
+  /*
+  Each thread handles one height. For each height, check if it is a gap.
+  */
+
   int h = blockIdx.x * blockDim.x + threadIdx.x;
-  if (h < num - 1) {
+  if (h < source_height - 1) {
     if (height_count[h] == 0 && height_count[h + 1] > 0) {
       atomicMin(gap, h);
     }
@@ -363,6 +341,11 @@ __global__ void kernel_check_gap(int* height_count, int* gap, int num) {
 __global__ void kernel_gap_relabel(int* pixel_height, int* bin_height,
                                    int* height_count, int img_size, int bin_num,
                                    int gap) {
+  /*
+  Each thread handles one pixel/bin. For each pixel/bin, if its height is
+  between the gap and the source height, set height=source_height+1.
+  */                                
+  
   int h = blockIdx.x * blockDim.x + threadIdx.x;
   int new_height = img_size + bin_num + 3;
   if (h < img_size) {
@@ -387,11 +370,8 @@ __global__ void kernel_bfs_init(unsigned int* res, int* bfs_pixel_height,
                                 int row, int bin_num) {
   /*
   Each thread handles one pixel. For each pixel, if it is reachable from
-  S in the res graph, set height=1; if it can reach T, set height=-1;
-  otherwise, set height=INF.
+  source in the res graph, set height=1; otherwise, set height=INF.
   Set height=INF for all bins.
-
-  NOTES FOR OPTIMIZATION:
   */
 
   int x = blockIdx.y * blockDim.y + threadIdx.y;
@@ -420,15 +400,12 @@ __global__ void kernel_pixel_bfs(unsigned int* res, int* bfs_pixel_height,
   set the height of reachable & unvisited points/bin to be cur_height + 1.
   If any height assignment is performed, set finished = false.
 
-  Size of shared memory: 4 * (tile_size + bin_num + 1)
-
-  NOTES FOR OPTIMIZATION:
+  Size of shared memory: 4 * tile_size
   */
 
   int x = blockIdx.y * blockDim.y + threadIdx.y;
   int y = blockIdx.x * blockDim.x + threadIdx.x;
   int pid = x * col + y;
-  // int block_pid = threadIdx.y * blockDim.x + threadIdx.x;
   int tile_pid = (threadIdx.y + 1) * tile_col + threadIdx.x + 1;
 
   // load bfs_pixel_height to shared memory
@@ -492,8 +469,6 @@ __global__ void kernel_bin_bfs(unsigned int* res, int* bfs_pixel_height,
   and the height of connected bin is cur_height and the pixel is reachable
   from the bin, set pixel height to be cur_height + 1.
   Set finished = false if assignment happens.
-
-  NOTES FOR OPTIMIZATION:
   */
 
   int x = blockIdx.y * blockDim.y + threadIdx.y;

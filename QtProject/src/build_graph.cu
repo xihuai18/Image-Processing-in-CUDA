@@ -295,7 +295,6 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
   cudaMalloc((void **)&d_height_count, max_height * sizeof(int));
   cudaMalloc((void **)&d_gap, sizeof(int));
   cudaMalloc((void **)&d_finished, sizeof(bool));
-  // cudaMemcpy(h_edges, d_edges, edges_num_bytes, cudaMemcpyDeviceToHost);
   cudaMemset(d_bin_flow, 0, (color_bin_num + 1) * sizeof(unsigned long long));
   cudaMemset(d_pixel_flow, 0, img_size * sizeof(unsigned int));
   cudaMemset(d_pull_pixel, 0, img_size * sizeof(unsigned int));
@@ -318,12 +317,13 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
   do {
     *h_finished = true;
     cudaMemcpy(d_finished, h_finished, sizeof(bool), cudaMemcpyHostToDevice);
-    // relabel
+    // find gap
     *h_gap = INF;
     cudaMemcpy(d_gap, h_gap, sizeof(int), cudaMemcpyHostToDevice);
     kernel_check_gap<<<grid_height, block_height>>>(
         d_height_count, d_gap, img_size + color_bin_num + 2);
     cudaMemcpy(h_gap, d_gap, sizeof(int), cudaMemcpyDeviceToHost);
+    // relabel
     kernel_gap_relabel<<<grid_height, block_height>>>(
         d_pixel_height, d_bin_height, d_height_count, img_size, color_bin_num,
         *h_gap);
@@ -432,7 +432,10 @@ int *getCutMask_iSAP(int *src_img, int *mask_img, int img_height, int img_width)
   return segment;
 }
 void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, int *mask) {
-  // build graph
+  /*
+  Find maxflow by iSAP and generate mask.
+  */
+  // convert the graph representation
   int n = img_size + bin_num + 2;
   int S = img_size + bin_num;
   int T = S + 1;
@@ -524,11 +527,6 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
     }
   }
   // printf("serial maxflow ans=%lld\n", ans);
-  // for (i = last_edge[S]; i >= 0; i = edges[i].lh) {
-  //   if (edges[i].f > 0) {
-  //     printf("%d %d %d\n", i, edges[i].f, edges[i].c);
-  //   }
-  // }
   int *queue = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int *height = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int head = 0, tail = 0;

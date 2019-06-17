@@ -317,12 +317,13 @@ int *maxFlow(int img_height, int img_width, unsigned int *d_edges,
   do {
     *h_finished = true;
     cudaMemcpy(d_finished, h_finished, sizeof(bool), cudaMemcpyHostToDevice);
-    // relabel
+    // find gap
     *h_gap = INF;
     cudaMemcpy(d_gap, h_gap, sizeof(int), cudaMemcpyHostToDevice);
     kernel_check_gap<<<grid_height, block_height>>>(
         d_height_count, d_gap, img_size + color_bin_num + 2);
     cudaMemcpy(h_gap, d_gap, sizeof(int), cudaMemcpyDeviceToHost);
+    // relabel
     kernel_gap_relabel<<<grid_height, block_height>>>(
         d_pixel_height, d_bin_height, d_height_count, img_size, color_bin_num,
         *h_gap);

@@ -211,7 +211,10 @@ __global__ void updateBinIdx(int img_height, int img_width,
 }
 
 void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, int *mask) {
-  // build graph
+  /*
+  Find maxflow by iSAP and generate mask.
+  */
+  // convert the graph representation
   int n = img_size + bin_num + 2;
   int S = img_size + bin_num;
   int T = S + 1;
@@ -266,7 +269,6 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
   pre[S] = S;
   gap[0] = n;
   while (d[S] <= n) {
-    // printf("%d ", p);
     for (i = cur[p]; i >= 0; i = edges[i].lh) {   // push
       if (d[p] == d[edges[i].to] + 1 && edges[i].f < edges[i].c) {
         cur[p] = i;
@@ -303,11 +305,7 @@ void serialMaxflow(unsigned *res, int img_size, int col, int row, int bin_num, i
     }
   }
   // printf("serial maxflow ans=%lld\n", ans);
-  // for (i = last_edge[S]; i >= 0; i = edges[i].lh) {
-  //   if (edges[i].f > 0) {
-  //     printf("%d %d %d\n", i, edges[i].f, edges[i].c);
-  //   }
-  // }
+  // BFS
   int *queue = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int *height = (int *)malloc(sizeof(int) * (img_size + bin_num));
   int head = 0, tail = 0;
